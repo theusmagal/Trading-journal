@@ -1,0 +1,89 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id             String          @id @default(cuid())
+  email          String          @unique
+  password       String
+  createdAt      DateTime        @default(now())
+  subscriptions  Subscription[]
+  brokerAccounts BrokerAccount[]
+}
+
+model Subscription {
+  id                   String    @id @default(cuid())
+  userId               String
+  stripeCustomerId     String
+  stripeSubscriptionId String
+  status               String
+  currentPeriodEnd     DateTime?
+  user                 User      @relation(fields: [userId], references: [id])
+}
+
+model BrokerAccount {
+  id           String        @id @default(cuid())
+  userId       String
+  broker       String
+  label        String?
+  apiKeyEnc    String
+  apiSecretEnc String
+  lastSyncAt   DateTime?
+  user         User          @relation(fields: [userId], references: [id])
+  executions   Execution[]
+  trades       Trade[]
+  dailyMetrics DailyMetric[]
+}
+
+model Execution {
+  id              String        @id @default(cuid())
+  brokerAccountId String
+  symbol          String
+  side            String
+  qty             Float
+  price           Float
+  fee             Float
+  execTime        DateTime
+  tradeId         String
+  brokerAccount   BrokerAccount @relation(fields: [brokerAccountId], references: [id])
+
+  @@index([brokerAccountId, execTime])
+}
+
+model Trade {
+  id              String        @id @default(cuid())
+  brokerAccountId String
+  symbol          String
+  side            String
+  openTime        DateTime
+  closeTime       DateTime
+  qty             Float
+  avgEntry        Float
+  avgExit         Float
+  grossPnl        Float
+  netPnl          Float
+  fees            Float
+  brokerAccount   BrokerAccount @relation(fields: [brokerAccountId], references: [id])
+
+  @@index([brokerAccountId, closeTime])
+}
+
+model DailyMetric {
+  id              String        @id @default(cuid())
+  brokerAccountId String
+  date            DateTime
+  trades          Int
+  wins            Int
+  losses          Int
+  winRate         Float
+  profitFactor    Float
+  netPnl          Float
+  brokerAccount   BrokerAccount @relation(fields: [brokerAccountId], references: [id])
+
+  @@unique([brokerAccountId, date])
+}
