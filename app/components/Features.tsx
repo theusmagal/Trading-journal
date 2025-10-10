@@ -1,0 +1,62 @@
+// app/components/Features.tsx
+import { DownloadCloud, LineChart, CalendarDays, ShieldCheck } from "lucide-react";
+
+type Feature = {
+  title: string;
+  desc: string;
+  Icon: React.ComponentType<React.SVGProps<SVGSVGElement>>;
+};
+
+const items: Feature[] = [
+  {
+    title: "Auto-import trades",
+    desc: "Connect Binance first (Bybit next). We pull executions & funding automatically.",
+    Icon: DownloadCloud,
+  },
+  {
+    title: "Performance KPIs",
+    desc: "Win rate, profit factor, equity curve, avg win/loss, and more.",
+    Icon: LineChart,
+  },
+  {
+    title: "PnL Calendar",
+    desc: "Daily wins/losses and trade counts in a simple month view.",
+    Icon: CalendarDays,
+  },
+  {
+    title: "Security-first",
+    desc: "Encrypted API keys at rest and privacy by default.",
+    Icon: ShieldCheck,
+  },
+];
+
+export default function Features() {
+  return (
+    <section className="py-12 md:py-16">
+      <div className="max-w-5xl mx-auto px-6">
+        <h2 className="text-2xl md:text-3xl font-semibold text-center">
+          Everything you need to improve
+        </h2>
+
+        <div className="mt-10 grid md:grid-cols-2 gap-6">
+          {items.map(({ title, desc, Icon }) => (
+            <div key={title} className="glass p-5">
+              <div className="flex items-start gap-3">
+                {/* icon badge */}
+                <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-white/10 bg-white/5 relative">
+                  <span className="absolute -top-1 -right-1 h-3 w-3 rounded-full bg-gradient-to-br from-emerald-400 to-sky-400" />
+                  <Icon className="h-5 w-5 text-zinc-200" strokeWidth={1.8} />
+                </span>
+
+                <div>
+                  <h3 className="font-semibold">{title}</h3>
+                  <p className="text-zinc-300/90 text-sm mt-1">{desc}</p>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}

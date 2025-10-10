@@ -1,26 +1,31 @@
 @import "tailwindcss";
 
+/* Always use dark colors (we can add a toggle later) */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
+  color-scheme: dark;
+  --background: #0a0a0a;     /* dark by default */
+  --foreground: #e5e7eb;     /* zinc-200-ish */
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
 
+/* Remove the prefers-color-scheme block – we force dark for now */
+/*
 @media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  :root { ... }
 }
+*/
 
-body {
+html, body {
+  min-height: 100%;
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-family: Arial, Helvetica, sans-serif; /* or use var(--font-sans) if you prefer */
+}
+
+/* Glass card helper */
+.glass {
+  @apply rounded-2xl border border-white/10 bg-white/5 backdrop-blur-md shadow-[0_1px_0_0_rgba(255,255,255,0.05)_inset,0_8px_30px_rgba(0,0,0,0.25)];
 }
