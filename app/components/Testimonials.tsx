@@ -5,22 +5,19 @@ const quotes = [
   {
     name: "Mikko K.",
     role: "Futures Trader",
-    text:
-      "The calendar view finally made my bad days obvious. Huge win for discipline.",
+    text: "The calendar view finally made my bad days obvious. Huge win for discipline.",
     rating: 5,
   },
   {
     name: "Sara L.",
     role: "Crypto Swing",
-    text:
-      "Automatic import means I actually keep a journal. The equity curve tells the truth.",
+    text: "Automatic import means I actually keep a journal. The equity curve tells the truth.",
     rating: 5,
   },
   {
     name: "João M.",
     role: "Scalper",
-    text:
-      "Fast, clean, and no spreadsheet drama. Exactly what I needed.",
+    text: "Fast, clean, and no spreadsheet drama. Exactly what I needed.",
     rating: 5,
   },
 ];
@@ -33,10 +30,9 @@ function Stars({ rating }: { rating: number }) {
         return (
           <Star
             key={i}
-            className={`h-4 w-4 ${
-              filled ? "text-yellow-400 fill-yellow-400" : "text-yellow-500/30"
-            }`}
+            className={filled ? "h-4 w-4 fill-yellow-400 text-yellow-400" : "h-4 w-4 text-yellow-500/40"}
             strokeWidth={1.5}
+            aria-hidden
           />
         );
       })}
@@ -47,20 +43,25 @@ function Stars({ rating }: { rating: number }) {
 export default function Testimonials() {
   return (
     <section className="py-12 md:py-16">
-      <div className="max-w-5xl mx-auto px-6">
-        <h2 className="text-2xl md:text-3xl font-semibold text-center">
+      <div className="mx-auto max-w-5xl px-6">
+        <h2 className="text-center text-2xl md:text-3xl font-semibold text-zinc-100">
           What traders say
         </h2>
 
-        <div className="mt-8 grid md:grid-cols-3 gap-6">
+        <div className="mt-8 grid gap-6 md:grid-cols-3">
           {quotes.map((q) => (
-            <div key={q.name} className="glass p-5 rounded-2xl">
+            <figure
+              key={q.name}
+              className="panel p-5 transition hover:ring-1 hover:ring-emerald-400/25 hover:shadow-[0_0_22px_rgba(16,185,129,.14)]"
+            >
               <Stars rating={q.rating} />
-              <p className="mt-3 text-zinc-200">&ldquo;{q.text}&rdquo;</p>
-              <div className="mt-4 text-sm text-zinc-400">
-                {q.name} • {q.role}
-              </div>
-            </div>
+              <blockquote className="mt-3 text-zinc-200">
+                &ldquo;{q.text}&rdquo;
+              </blockquote>
+              <figcaption className="mt-4 text-sm text-zinc-400">
+                {q.name} &bull; {q.role}
+              </figcaption>
+            </figure>
           ))}
         </div>
       </div>

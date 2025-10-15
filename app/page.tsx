@@ -10,7 +10,7 @@ import CTABand from "./components/CTABand";
 
 export default function Home() {
   return (
-    <>
+    <div className="bg-transparent text-inherit">
       <HeroPro />
       <TrustRow />
       <div id="features" />
@@ -31,6 +31,6 @@ export default function Home() {
       <FAQ />
       <CTABand />
       <Footer />
-    </>
+    </div>
   );
 }

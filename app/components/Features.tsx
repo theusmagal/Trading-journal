@@ -32,25 +32,26 @@ const items: Feature[] = [
 
 export default function Features() {
   return (
-    <section className="py-12 md:py-16">
-      <div className="max-w-5xl mx-auto px-6">
-        <h2 className="text-2xl md:text-3xl font-semibold text-center">
+    <section className="py-12 md:py-16 bg-transparent">
+      <div className="mx-auto max-w-5xl px-6">
+        <h2 className="text-center text-2xl md:text-3xl font-semibold text-zinc-100">
           Everything you need to improve
         </h2>
 
-        <div className="mt-10 grid md:grid-cols-2 gap-6">
+        <div className="mt-10 grid gap-6 md:grid-cols-2">
           {items.map(({ title, desc, Icon }) => (
-            <div key={title} className="glass p-5">
+            <div key={title} className="panel p-5">
               <div className="flex items-start gap-3">
                 {/* icon badge */}
-                <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-white/10 bg-white/5 relative">
-                  <span className="absolute -top-1 -right-1 h-3 w-3 rounded-full bg-gradient-to-br from-emerald-400 to-sky-400" />
+                <span className="relative inline-flex h-10 w-10 items-center justify-center rounded-xl
+                                 border border-zinc-700/50 bg-zinc-900/60">
+                  <span className="absolute -right-1 -top-1 h-3 w-3 rounded-full bg-gradient-to-br from-emerald-400 to-sky-400" />
                   <Icon className="h-5 w-5 text-zinc-200" strokeWidth={1.8} />
                 </span>
 
                 <div>
-                  <h3 className="font-semibold">{title}</h3>
-                  <p className="text-zinc-300/90 text-sm mt-1">{desc}</p>
+                  <h3 className="font-semibold text-zinc-100">{title}</h3>
+                  <p className="mt-1 text-sm text-zinc-300">{desc}</p>
                 </div>
               </div>
             </div>
