@@ -1,4 +1,5 @@
 // app/components/Features.tsx
+"use client";
 import { DownloadCloud, LineChart, CalendarDays, ShieldCheck } from "lucide-react";
 
 type Feature = {
@@ -40,11 +41,13 @@ export default function Features() {
 
         <div className="mt-10 grid gap-6 md:grid-cols-2">
           {items.map(({ title, desc, Icon }) => (
-            <div key={title} className="panel p-5">
+            <div key={title} className="glass p-5">
               <div className="flex items-start gap-3">
                 {/* icon badge */}
-                <span className="relative inline-flex h-10 w-10 items-center justify-center rounded-xl
-                                 border border-zinc-700/50 bg-zinc-900/60">
+                <span
+                  className="relative inline-flex h-10 w-10 items-center justify-center rounded-xl
+                             border border-zinc-700/50 bg-zinc-900/60"
+                >
                   <span className="absolute -right-1 -top-1 h-3 w-3 rounded-full bg-gradient-to-br from-emerald-400 to-sky-400" />
                   <Icon className="h-5 w-5 text-zinc-200" strokeWidth={1.8} />
                 </span>

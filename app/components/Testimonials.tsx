@@ -1,4 +1,3 @@
-// app/components/Testimonials.tsx
 import { Star } from "lucide-react";
 
 const quotes = [
@@ -52,7 +51,7 @@ export default function Testimonials() {
           {quotes.map((q) => (
             <figure
               key={q.name}
-              className="panel p-5 transition hover:ring-1 hover:ring-emerald-400/25 hover:shadow-[0_0_22px_rgba(16,185,129,.14)]"
+              className="glass p-5 transition hover:ring-1 hover:ring-emerald-400/25 hover:shadow-[0_0_22px_rgba(16,185,129,.14)]"
             >
               <Stars rating={q.rating} />
               <blockquote className="mt-3 text-zinc-200">

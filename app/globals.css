@@ -1,29 +1,27 @@
-/* app/globals.css */
+
 @import "tailwindcss";
 @reference "tailwindcss";
 
-/* ---------- Base (always-dark) ---------- */
 html { color-scheme: dark; }
 
 html, body { min-height: 100%; }
 * { box-sizing: border-box; }
 
 body {
-  background-color: #0b0f13;   /* deep canvas */
-  color: #e5e7eb;              /* zinc-200 */
+  background-color: #0b0f13;  
+  color: #e5e7eb;             
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   font-feature-settings: "ss01", "cv01";
 }
 
-/* ---------- Terminal grid + soft spotlight ---------- */
 body::before{
   content:"";
   position:fixed; inset:0; z-index:-1;
   background-image:
     linear-gradient(rgba(255,255,255,0.015) 1px, transparent 1px),
     linear-gradient(90deg, rgba(255,255,255,0.015) 1px, transparent 1px);
-  background-size: 48px 48px; /* larger cells = calmer */
+  background-size: 48px 48px; 
   opacity:.9;
   pointer-events:none;  
 }
@@ -37,15 +35,12 @@ body::after{
   pointer-events:none;
 }
 
-/* ---------- Reusable components ---------- */
 @layer components {
-  /* Main panels (cards/sections) */
   .panel{
     @apply rounded-xl border border-zinc-700/60 bg-zinc-900/70;
     box-shadow: 0 6px 24px rgba(0, 0, 0, .35), 0 0 22px rgba(16, 185, 129, .08);
   }
 
-  /* Lighter glassy surface for images/KPIs */
   .glass{
     @apply rounded-xl border border-zinc-700/50 bg-zinc-900/60 backdrop-blur-sm;
     box-shadow: 0 4px 18px rgba(0, 0, 0, .35), 0 0 18px rgba(16, 185, 129, .07);
@@ -54,6 +49,5 @@ body::after{
   .muted { @apply text-zinc-400; }
   .subtle { @apply text-zinc-500; }
 
-  /* Optional: subtle emerald glow for brand text */
   .glow-text { text-shadow: 0 0 8px rgba(16,185,129,0.4); }
 }

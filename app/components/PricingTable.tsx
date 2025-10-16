@@ -13,7 +13,7 @@ export default function PricingTable({ highlightAnnual = true }: { highlightAnnu
           {/* Yearly (highlight) */}
           <div
             className={[
-              "panel p-6",
+              "glass p-6",
               highlightAnnual ? "ring-1 ring-emerald-400/30 shadow-[0_0_30px_rgba(16,185,129,.18)]" : "",
             ].join(" ")}
           >
@@ -41,7 +41,7 @@ export default function PricingTable({ highlightAnnual = true }: { highlightAnnu
           </div>
 
           {/* Monthly */}
-          <div className="panel p-6 opacity-85 transition hover:opacity-100">
+          <div className="glass p-6 opacity-85 transition hover:opacity-100">
             <h3 className="font-semibold text-zinc-100">Monthly</h3>
             <p className="mt-1 text-3xl font-bold text-zinc-100">
               €20 <span className="text-sm text-zinc-400">/ month</span>

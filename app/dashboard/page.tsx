@@ -14,7 +14,6 @@ function baseFrom(h: Headers) {
 export default async function DashboardPage({
   searchParams,
 }: {
-  // 👇 note: searchParams is now a Promise in your Next.js version
   searchParams: Promise<{ range?: RangeKey }>;
 }) {
   const session = await getServerSession(authOptions);
@@ -27,7 +26,6 @@ export default async function DashboardPage({
     );
   }
 
-  // ✅ await it
   const sp = await searchParams;
   const initialRange: RangeKey = (sp?.range as RangeKey) ?? "30d";
 

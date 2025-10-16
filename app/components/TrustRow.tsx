@@ -11,7 +11,7 @@ export default function TrustRow() {
         {items.map((i) => (
           <div
             key={i.k}
-            className="panel p-5 text-center transition
+            className="glass p-5 text-center transition
                        hover:ring-1 hover:ring-emerald-400/25 hover:shadow-[0_0_22px_rgba(16,185,129,.14)]"
           >
             <div className="text-emerald-300 font-semibold text-lg">{i.k}</div>

@@ -65,7 +65,7 @@ export default function HeroPro() {
           <p className="mt-3 text-xs text-zinc-400">14-day free trial • Cancel anytime</p>
         </div>
 
-        {/* Illustration block */}
+        {/* illustration block*/}
         <div className="relative">
           {/* soft emerald glow behind the image only */}
           <div

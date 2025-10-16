@@ -37,7 +37,7 @@ export default function FAQ() {
               <div
                 key={item.q}
                 className={[
-                  "panel overflow-hidden",
+                  "glass overflow-hidden",
                   active ? "ring-1 ring-emerald-400/25" : "",
                 ].join(" ")}
               >

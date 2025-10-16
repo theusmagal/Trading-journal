@@ -13,7 +13,6 @@ export default function SparklineInteractive({ data, className="" }: { data: Pt[
   const sy = (y:number) => H - P - ((y - minY) / (maxY - minY || 1)) * (H - 2*P);
   const d = data.map((p,i) => `${i ? "L":"M"}${sx(p.x)},${sy(p.y)}`).join(" ");
 
-  // Simple hover index by nearest X
   const xsScaled = data.map(p => sx(p.x));
   const [hi, setHi] = useState<number | null>(null);
 
@@ -36,7 +35,6 @@ export default function SparklineInteractive({ data, className="" }: { data: Pt[
           </linearGradient>
         </defs>
 
-        {/* Axis baseline */}
         <line x1={P} y1={H-P} x2={W-P} y2={H-P} stroke="rgba(255,255,255,0.08)" strokeWidth="1"/>
 
         <path d={d} fill="none" stroke="#34d399" strokeWidth="2.2" strokeLinejoin="round" strokeLinecap="round" />

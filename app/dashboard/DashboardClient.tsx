@@ -10,6 +10,10 @@ import PnLHistogram from "@/components/PnLHistogram";
 import TopSymbols from "@/components/TopSymbols";
 import { fmtPct, fmtUsd } from "@/lib/format";
 
+import GaugeWinRate from "@/components/widgets/GaugeWinRate";
+import DonutProfitSplit from "@/components/widgets/DonutProfitSplit";
+import AvgWinLossBar from "@/components/widgets/AvgWinLossBar";
+
 type Summary = {
   kpis: { netPnl: number; winRate: number; profitFactor: number; avgR: number; tradeCount: number };
   equity: { x: number; y: number }[];
@@ -41,13 +45,10 @@ export default function DashboardClient({
   const [data, setData] = useState<Summary>(initial);
   const [loading, setLoading] = useState(false);
 
-  // Keep state in sync if user navigates with history (?range=…)
   useEffect(() => {
     if (urlRange !== range) setRange(urlRange);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [urlRange]);
 
-  // Refetch when range changes
   useEffect(() => {
     let active = true;
     setLoading(true);
@@ -64,7 +65,6 @@ export default function DashboardClient({
     };
   }, [range]);
 
-  // Stable month label (UTC so SSR/CSR match)
   const monthLabel = useMemo(() => {
     return new Intl.DateTimeFormat("en-US", {
       month: "long",
@@ -73,12 +73,38 @@ export default function DashboardClient({
     }).format(new Date());
   }, []);
 
-  const pos = useMemo(() => data.trades.filter((t) => t.pnl > 0).reduce((a, t) => a + t.pnl, 0), [data]);
+  const pos = useMemo(
+    () => data.trades.filter((t) => t.pnl > 0).reduce((a, t) => a + t.pnl, 0),
+    [data]
+  );
   const neg = useMemo(
     () => Math.abs(data.trades.filter((t) => t.pnl < 0).reduce((a, t) => a + t.pnl, 0)),
     [data]
   );
   const deltaPnl = +(pos - neg).toFixed(2);
+
+  const stats = useMemo(() => {
+    const wins = data.trades.filter((t) => t.pnl > 0);
+    const losses = data.trades.filter((t) => t.pnl < 0);
+
+    const grossWins = wins.reduce((a, t) => a + t.pnl, 0);
+    const grossLossesAbs = Math.abs(losses.reduce((a, t) => a + t.pnl, 0));
+
+    const avgWin = wins.length ? grossWins / wins.length : 0;
+    const avgLossAbs = losses.length ? grossLossesAbs / losses.length : 0;
+
+    const profitFactor = grossLossesAbs > 0 ? grossWins / grossLossesAbs : wins.length ? Infinity : 0;
+
+    return {
+      wins: wins.length,
+      losses: losses.length,
+      grossWins,
+      grossLossesAbs,
+      avgWin,
+      avgLossAbs,
+      profitFactor,
+    };
+  }, [data]);
 
   const setRangeAndUrl = (r: RangeKey) => {
     setRange(r);
@@ -116,17 +142,33 @@ export default function DashboardClient({
 
       {/* KPIs */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <KPI label="Net PnL" value={fmtUsd(data.kpis.netPnl, { signed: true })} delta={deltaPnl} />
+        <KPI
+          label="Total P&L"
+          value={fmtUsd(data.kpis.netPnl)}
+          forceGreen           
+        />
         <KPI label="Win rate" value={fmtPct(data.kpis.winRate)} />
         <KPI label="Profit factor" value={`${data.kpis.profitFactor}`} />
         <KPI label="Avg R" value={`${data.kpis.avgR}`} sub={`${data.kpis.tradeCount} trades`} />
       </div>
 
-      {/* Equity */}
-      <section className="panel p-4">
+
+      {/*equity */}
+      <section className="glass p-4">
         <div className="mb-2 text-sm text-zinc-400">Equity curve ({range.toUpperCase()})</div>
         <SparklineInteractive data={data.equity} />
       </section>
+
+      {/* visuall summary widgets */}
+      <div className="grid gap-4 md:grid-cols-3">
+        <GaugeWinRate wins={stats.wins} losses={stats.losses} />
+        <DonutProfitSplit
+          grossWins={stats.grossWins}
+          grossLossesAbs={stats.grossLossesAbs}
+          profitFactor={stats.profitFactor}
+        />
+        <AvgWinLossBar avgWin={stats.avgWin} avgLossAbs={stats.avgLossAbs} />
+      </div>
 
       {/* Extras */}
       <div className="grid gap-6 lg:grid-cols-2">
@@ -134,7 +176,7 @@ export default function DashboardClient({
         <PnLHistogram trades={data.trades} />
       </div>
 
-      {/* Calendar + Trades */}
+      {/* calendar + trades */}
       <div className="grid gap-6 lg:grid-cols-2">
         <CalendarPreview days={data.calendar} title={monthLabel} />
         <TradesTable rows={data.trades} />
