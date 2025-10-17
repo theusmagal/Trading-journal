@@ -14,6 +14,32 @@ import GaugeWinRate from "@/components/widgets/GaugeWinRate";
 import DonutProfitSplit from "@/components/widgets/DonutProfitSplit";
 import AvgWinLossBar from "@/components/widgets/AvgWinLossBar";
 
+/* NEW: icon for Coach Tip */
+import { Activity } from "lucide-react";
+
+/* ---------- Coach tip phrases ---------- */
+const MOTIVATION_POSITIVE = [
+  "Best losers win.",
+  "Good things take time.",
+  "Small edges, big outcomes.",
+  "Process over outcome.",
+  "Stick to the plan.",
+  "Protect the downside.",
+  "Let winners work.",
+  "One trade at a time.",
+  "Patience is a position.",
+  "Discipline compounds.",
+];
+
+const MOTIVATION_TOUGH = [
+  "Losses are tuition. Learn fast.",
+  "Red days teach green habits.",
+  "Review, adjust, execute.",
+  "Cut quick, live to trade.",
+  "Great risk = great respect.",
+  "You only need the next good trade.",
+];
+
 type Summary = {
   kpis: { netPnl: number; winRate: number; profitFactor: number; avgR: number; tradeCount: number };
   equity: { x: number; y: number }[];
@@ -113,6 +139,14 @@ export default function DashboardClient({
     router.replace(`?${q.toString()}`, { scroll: false });
   };
 
+  /* pick a phrase once per day (stable) based on net P&L sign */
+  const phraseOfDay = useMemo(() => {
+    const millisPerDay = 24 * 60 * 60 * 1000;
+    const dayIndex = Math.floor(Date.now() / millisPerDay);
+    const source = data.kpis.netPnl >= 0 ? MOTIVATION_POSITIVE : MOTIVATION_TOUGH;
+    return source[dayIndex % source.length];
+  }, [data.kpis.netPnl]);
+
   return (
     <div className="space-y-6">
       {/* Range selector */}
@@ -140,26 +174,44 @@ export default function DashboardClient({
         {loading && <span className="text-xs text-zinc-400">Loading…</span>}
       </div>
 
-      {/* KPIs */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <KPI
-          label="Total P&L"
-          value={fmtUsd(data.kpis.netPnl)}
-          forceGreen           
-        />
-        <KPI label="Win rate" value={fmtPct(data.kpis.winRate)} />
-        <KPI label="Profit factor" value={`${data.kpis.profitFactor}`} />
-        <KPI label="Avg R" value={`${data.kpis.avgR}`} sub={`${data.kpis.tradeCount} trades`} />
-      </div>
+      {/* Top strip: Total P&L + Motivation banner */}
+      <section className="flex flex-col md:flex-row gap-4">
+        {/* Left: Total P&L card with sensible width */}
+        <div className="md:w-[420px]">
+          <KPI
+            label="Total P&L"
+            value={fmtUsd(data.kpis.netPnl)}
+            forceGreen
+          />
+        </div>
 
+        {/* Right: Coach Tip banner (with Activity icon) */}
+        <div className="glass flex-1 p-4 md:p-5 flex items-center gap-4">
+          <div
+            className="flex h-10 w-10 items-center justify-center rounded-full
+                       border border-emerald-400/30 bg-emerald-500/10"
+            aria-hidden
+          >
+            <Activity className="h-5 w-5 text-white/90" strokeWidth={2.2} />
+          </div>
+          <div className="flex flex-col leading-tight">
+            <span className="text-xs uppercase tracking-wide text-emerald-400 font-semibold opacity-80">
+              Coach Tip
+            </span>
+            <span className="text-base font-medium text-emerald-200 italic mt-1">
+              {phraseOfDay}
+            </span>
+          </div>
+        </div>
+      </section>
 
-      {/*equity */}
+      {/* equity */}
       <section className="glass p-4">
         <div className="mb-2 text-sm text-zinc-400">Equity curve ({range.toUpperCase()})</div>
         <SparklineInteractive data={data.equity} />
       </section>
 
-      {/* visuall summary widgets */}
+      {/* visual summary widgets */}
       <div className="grid gap-4 md:grid-cols-3">
         <GaugeWinRate wins={stats.wins} losses={stats.losses} />
         <DonutProfitSplit

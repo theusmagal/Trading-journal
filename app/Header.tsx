@@ -21,7 +21,6 @@ export default function Header() {
     return () => window.removeEventListener('scroll', onScroll);
   }, []);
 
-  // Close mobile menu on route change
   useEffect(() => { setOpen(false); }, [pathname]);
 
   async function handleSignOut() {
@@ -46,13 +45,30 @@ export default function Header() {
       ].join(' ')}
     >
       <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-6">
-        {/* Brand */}
-        <Link href="/" className="flex items-center" aria-label="TradePulse home">
-          <span className="text-lg font-semibold tracking-tight text-emerald-400"
-                style={{ textShadow: '0 0 8px rgba(16,185,129,.4)' }}>
+        {/* Brand with ECG pulse line */}
+        <Link href="/" className="flex items-center gap-2" aria-label="TradePulse home">
+          {/* Red pulse line (ECG) */}
+          <svg
+            viewBox="0 0 64 24"
+            className="h-4 md:h-5 w-auto pulse-ecg"
+            aria-hidden="true"
+          >
+            {/* the line */}
+            <path
+              d="M1 12 H12 L16 6 L20 22 L26 2 L30 14 L34 10 L38 12 H63"
+              vectorEffect="non-scaling-stroke"
+            />
+          </svg>
+
+          {/* wordmark */}
+          <span
+            className="text-lg font-semibold tracking-tight text-emerald-400"
+            style={{ textShadow: '0 0 8px rgba(16,185,129,.4)' }}
+          >
             TradePulse
           </span>
         </Link>
+
 
         {/* Desktop nav */}
         <nav className="hidden items-center gap-6 text-sm md:flex" aria-label="Primary">

@@ -63,3 +63,40 @@ body::after{
   .glow-text { text-shadow: 0 0 8px rgba(16,185,129,0.4); }
 }
 
+/* --- TradePulse ECG logo --- */
+.pulse-ecg path {
+  stroke: #ef4444;                 /* Tailwind red-500 */
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  fill: none;
+  filter: drop-shadow(0 0 6px rgba(239, 68, 68, 0.55));
+}
+
+/* Gentle heartbeat (scale) */
+.pulse-ecg path {
+  stroke-dasharray: 140;
+  stroke-dashoffset: 140;
+  animation: ecg-draw 2.2s ease-in-out infinite;
+}
+@keyframes ecg-draw {
+  0%, 20% { stroke-dashoffset: 140; }
+  55%     { stroke-dashoffset: 0; }
+  100%    { stroke-dashoffset: 0; }
+}
+
+/* If you prefer a drawing/tracing effect instead of scale, swap to this:
+
+.pulse-ecg path {
+  stroke-dasharray: 140;
+  stroke-dashoffset: 140;
+  animation: ecg-draw 2.2s ease-in-out infinite;
+}
+@keyframes ecg-draw {
+  0%, 20% { stroke-dashoffset: 140; }
+  55%     { stroke-dashoffset: 0; }
+  100%    { stroke-dashoffset: 0; }
+}
+
+
+*/
