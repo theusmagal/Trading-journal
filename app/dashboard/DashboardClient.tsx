@@ -8,16 +8,13 @@ import SparklineInteractive from "@/components/SparklineInteractive";
 import TradesTable from "@/components/TradesTable";
 import PnLHistogram from "@/components/PnLHistogram";
 import TopSymbols from "@/components/TopSymbols";
-import { fmtPct, fmtUsd } from "@/lib/format";
+import { fmtUsd } from "@/lib/format";
 
 import GaugeWinRate from "@/components/widgets/GaugeWinRate";
 import DonutProfitSplit from "@/components/widgets/DonutProfitSplit";
 import AvgWinLossBar from "@/components/widgets/AvgWinLossBar";
-
-/* NEW: icon for Coach Tip */
 import { Activity } from "lucide-react";
 
-/* ---------- Coach tip phrases ---------- */
 const MOTIVATION_POSITIVE = [
   "Best losers win.",
   "Good things take time.",
@@ -71,43 +68,52 @@ export default function DashboardClient({
   const [data, setData] = useState<Summary>(initial);
   const [loading, setLoading] = useState(false);
 
+  const now = new Date();
+  const [calYear, setCalYear] = useState(now.getUTCFullYear());
+  const [calMonth, setCalMonth] = useState(now.getUTCMonth()); // 0..11
+
+  const shiftMonth = (delta: number) => {
+    const d = new Date(Date.UTC(calYear, calMonth + delta, 1));
+    setCalYear(d.getUTCFullYear());
+    setCalMonth(d.getUTCMonth());
+  };
+
   useEffect(() => {
     if (urlRange !== range) setRange(urlRange);
-  }, [urlRange]);
+  }, [urlRange, range]);
 
   useEffect(() => {
     let active = true;
     setLoading(true);
     fetch(`/api/me/summary?range=${range}`, { cache: "no-store" })
       .then((r) => r.json())
-      .then((json) => {
-        if (active) setData(json);
+      .then((json: Summary) => {
+        if (!active) return;
+        setData((prev) => ({
+          ...prev,
+          ...json,
+          calendar: prev.calendar, 
+        }));
       })
-      .finally(() => {
-        if (active) setLoading(false);
-      });
+      .finally(() => active && setLoading(false));
     return () => {
       active = false;
     };
   }, [range]);
 
-  const monthLabel = useMemo(() => {
-    return new Intl.DateTimeFormat("en-US", {
-      month: "long",
-      year: "numeric",
-      timeZone: "UTC",
-    }).format(new Date());
-  }, []);
-
-  const pos = useMemo(
-    () => data.trades.filter((t) => t.pnl > 0).reduce((a, t) => a + t.pnl, 0),
-    [data]
-  );
-  const neg = useMemo(
-    () => Math.abs(data.trades.filter((t) => t.pnl < 0).reduce((a, t) => a + t.pnl, 0)),
-    [data]
-  );
-  const deltaPnl = +(pos - neg).toFixed(2);
+  useEffect(() => {
+    let active = true;
+    const ym = `${calYear}-${String(calMonth + 1).padStart(2, "0")}`;
+    fetch(`/api/me/summary?ym=${ym}`, { cache: "no-store" })
+      .then((r) => r.json())
+      .then((json: Pick<Summary, "calendar">) => {
+        if (!active) return;
+        setData((prev) => ({ ...prev, calendar: json.calendar }));
+      });
+    return () => {
+      active = false;
+    };
+  }, [calYear, calMonth]);
 
   const stats = useMemo(() => {
     const wins = data.trades.filter((t) => t.pnl > 0);
@@ -119,7 +125,8 @@ export default function DashboardClient({
     const avgWin = wins.length ? grossWins / wins.length : 0;
     const avgLossAbs = losses.length ? grossLossesAbs / losses.length : 0;
 
-    const profitFactor = grossLossesAbs > 0 ? grossWins / grossLossesAbs : wins.length ? Infinity : 0;
+    const profitFactor =
+      grossLossesAbs > 0 ? grossWins / grossLossesAbs : wins.length ? Infinity : 0;
 
     return {
       wins: wins.length,
@@ -139,7 +146,6 @@ export default function DashboardClient({
     router.replace(`?${q.toString()}`, { scroll: false });
   };
 
-  /* pick a phrase once per day (stable) based on net P&L sign */
   const phraseOfDay = useMemo(() => {
     const millisPerDay = 24 * 60 * 60 * 1000;
     const dayIndex = Math.floor(Date.now() / millisPerDay);
@@ -147,9 +153,21 @@ export default function DashboardClient({
     return source[dayIndex % source.length];
   }, [data.kpis.netPnl]);
 
+  const prettyRange = useMemo(() => {
+    switch (range) {
+      case "7d":
+        return "last 7 days";
+      case "30d":
+        return "last 30 days";
+      case "ytd":
+        return "year to date";
+      default:
+        return "all time";
+    }
+  }, [range]);
+
   return (
     <div className="space-y-6">
-      {/* Range selector */}
       <div className="flex items-center gap-2">
         {(["7d", "30d", "ytd", "all"] as RangeKey[]).map((r) => {
           const active = range === r;
@@ -174,18 +192,11 @@ export default function DashboardClient({
         {loading && <span className="text-xs text-zinc-400">Loading…</span>}
       </div>
 
-      {/* Top strip: Total P&L + Motivation banner */}
       <section className="flex flex-col md:flex-row gap-4">
-        {/* Left: Total P&L card with sensible width */}
         <div className="md:w-[420px]">
-          <KPI
-            label="Total P&L"
-            value={fmtUsd(data.kpis.netPnl)}
-            forceGreen
-          />
+          <KPI label="Total P&L" value={fmtUsd(data.kpis.netPnl)} forceGreen />
         </div>
 
-        {/* Right: Coach Tip banner (with Activity icon) */}
         <div className="glass flex-1 p-4 md:p-5 flex items-center gap-4">
           <div
             className="flex h-10 w-10 items-center justify-center rounded-full
@@ -205,13 +216,19 @@ export default function DashboardClient({
         </div>
       </section>
 
-      {/* equity */}
       <section className="glass p-4">
-        <div className="mb-2 text-sm text-zinc-400">Equity curve ({range.toUpperCase()})</div>
-        <SparklineInteractive data={data.equity} />
+        <div className="mb-2 text-sm text-zinc-400">Balance growth — {prettyRange}</div>
+        <SparklineInteractive
+          data={data.equity}
+          className="mt-2 cursor-crosshair"
+          showAxes
+          showGrid
+          yTicks={4}
+          xTicks={5}
+          showTooltip
+        />
       </section>
 
-      {/* visual summary widgets */}
       <div className="grid gap-4 md:grid-cols-3">
         <GaugeWinRate wins={stats.wins} losses={stats.losses} />
         <DonutProfitSplit
@@ -222,16 +239,33 @@ export default function DashboardClient({
         <AvgWinLossBar avgWin={stats.avgWin} avgLossAbs={stats.avgLossAbs} />
       </div>
 
-      {/* Extras */}
-      <div className="grid gap-6 lg:grid-cols-2">
-        <TopSymbols trades={data.trades} />
-        <PnLHistogram trades={data.trades} />
+      <div className="grid gap-6 lg:grid-cols-2 items-stretch">
+        <div className="h-full">
+          <CalendarPreview
+            days={data.calendar}
+            year={calYear}
+            month={calMonth}
+            onPrevMonth={() => shiftMonth(-1)}
+            onNextMonth={() => shiftMonth(+1)}
+          />
+        </div>
+        <div className="h-full">
+          <TradesTable rows={data.trades} />
+        </div>
       </div>
 
-      {/* calendar + trades */}
-      <div className="grid gap-6 lg:grid-cols-2">
-        <CalendarPreview days={data.calendar} title={monthLabel} />
-        <TradesTable rows={data.trades} />
+      <div className="grid gap-6 lg:grid-cols-3">
+        <div className="lg:col-span-1">
+          <TopSymbols trades={data.trades} />
+        </div>
+        <div className="lg:col-span-2">
+          <PnLHistogram
+            trades={data.trades}
+            range={range}
+            height={480}
+            className="min-h-[360px]"
+          />
+        </div>
       </div>
     </div>
   );
