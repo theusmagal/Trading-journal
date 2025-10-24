@@ -36,7 +36,8 @@ export default function CalendarPreview({
         <div className="flex items-center gap-2">
           <button
             onClick={onPrevMonth}
-            className="h-7 w-7 rounded-md border border-white/10 hover:bg-white/5"
+            disabled={!onPrevMonth}
+            className="h-7 w-7 rounded-md border border-white/10 hover:bg-white/5 disabled:opacity-40"
             aria-label="Previous month"
           >
             ‹
@@ -51,7 +52,8 @@ export default function CalendarPreview({
           </div>
           <button
             onClick={onNextMonth}
-            className="h-7 w-7 rounded-md border border-white/10 hover:bg-white/5"
+            disabled={!onNextMonth}
+            className="h-7 w-7 rounded-md border border-white/10 hover:bg-white/5 disabled:opacity-40"
             aria-label="Next month"
           >
             ›
@@ -86,7 +88,7 @@ export default function CalendarPreview({
           return (
             <div
               key={d.day}
-              className="rounded-md border border-white/8 p-2"
+              className="rounded-md border border-white/10 p-2"
               style={{ backgroundColor: bg }}
             >
               <div className="text-zinc-200">{d.day}</div>

@@ -2,46 +2,41 @@
 @reference "tailwindcss";
 
 html { color-scheme: dark; }
-
 html, body { min-height: 100%; }
 * { box-sizing: border-box; }
 
 body {
-  /* lighter base (was #0e1419) */
   background-color: #121a21;
   color: #e5e7eb;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  font-feature-settings: "ss01", "cv01";
+  font-feature-settings: "ss01","cv01";
 }
 
-body::before{
+body::before {
   content:"";
   position:fixed; inset:0; z-index:-1;
   background-image:
-    /* brighter grid (was 0.025) */
     linear-gradient(rgba(255,255,255,0.04) 1px, transparent 1px),
     linear-gradient(90deg, rgba(255,255,255,0.04) 1px, transparent 1px);
   background-size: 48px 48px;
-  opacity:1; /* was .95 */
+  opacity: 1; 
   pointer-events:none;
 }
 
-body::after{
+body::after {
   content:"";
   position:fixed; inset:0; z-index:-1;
   background:
-    /* stronger emerald vignettes (was .13 / .09) */
     radial-gradient(60% 50% at 50% 20%, rgba(16,185,129,.18), transparent 60%),
     radial-gradient(40% 30% at 80% 10%, rgba(16,185,129,.12), transparent 70%),
-    /* subtle lift from top (was .02) */
     linear-gradient(to bottom, rgba(255,255,255,.035), transparent 35%);
   pointer-events:none;
 }
 
+/* components */
 @layer components {
-  .panel{
-    /* brighter surface + clearer border */
+  .panel {
     @apply rounded-xl border border-zinc-500/45 bg-zinc-900/50;
     /* soft lift + crisp inner outline for definition */
     box-shadow:
@@ -50,7 +45,7 @@ body::after{
       0 0 22px rgba(16,185,129,.08);
   }
 
-  .glass{
+  .glass {
     @apply rounded-xl border border-zinc-500/35 bg-zinc-900/45 backdrop-blur-sm;
     box-shadow:
       0 6px 20px rgba(0,0,0,.20),
@@ -61,42 +56,57 @@ body::after{
   .muted { @apply text-zinc-400; }
   .subtle { @apply text-zinc-500; }
   .glow-text { text-shadow: 0 0 8px rgba(16,185,129,0.4); }
+
+  .input {
+    @apply w-full h-9 rounded-md
+           bg-zinc-900/60 border border-zinc-800
+           px-3 outline-none
+           text-zinc-100 placeholder-zinc-500
+           transition;
+  }
+  .input:focus {
+    @apply border-zinc-600 ring-2 ring-emerald-500/20;
+  }
+  .input:disabled {
+    @apply opacity-70 cursor-not-allowed;
+  }
+
+  .btn-primary {
+    @apply inline-flex items-center justify-center
+           h-9 px-3 rounded-md
+           bg-emerald-500/20 text-emerald-200
+           border border-emerald-400/30
+           transition;
+  }
+  .btn-primary:hover { @apply bg-emerald-500/30; }
+  .btn-primary:disabled { @apply opacity-60 cursor-not-allowed; }
+
+  .btn {
+    @apply inline-flex items-center justify-center
+           h-9 px-3 rounded-md
+           bg-zinc-900/60 border border-zinc-800
+           text-zinc-200 hover:bg-zinc-900/70 transition;
+  }
 }
 
-/* --- TradePulse ECG logo --- */
 .pulse-ecg path {
-  stroke: #ef4444;                 /* Tailwind red-500 */
+  stroke: #ef4444;                 
   stroke-width: 3;
   stroke-linecap: round;
   stroke-linejoin: round;
   fill: none;
   filter: drop-shadow(0 0 6px rgba(239, 68, 68, 0.55));
-}
-
-/* Gentle heartbeat (scale) */
-.pulse-ecg path {
   stroke-dasharray: 140;
   stroke-dashoffset: 140;
   animation: ecg-draw 2.2s ease-in-out infinite;
 }
+
 @keyframes ecg-draw {
   0%, 20% { stroke-dashoffset: 140; }
   55%     { stroke-dashoffset: 0; }
   100%    { stroke-dashoffset: 0; }
 }
 
-/* If you prefer a drawing/tracing effect instead of scale, swap to this:
-
-.pulse-ecg path {
-  stroke-dasharray: 140;
-  stroke-dashoffset: 140;
-  animation: ecg-draw 2.2s ease-in-out infinite;
+@media (prefers-reduced-motion: reduce) {
+  .pulse-ecg path { animation: none; }
 }
-@keyframes ecg-draw {
-  0%, 20% { stroke-dashoffset: 140; }
-  55%     { stroke-dashoffset: 0; }
-  100%    { stroke-dashoffset: 0; }
-}
-
-
-*/

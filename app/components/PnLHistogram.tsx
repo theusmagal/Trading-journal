@@ -9,14 +9,16 @@ export default function PnLHistogram({
   trades,
   range,
   className = "",
-  height = 480,    
+  height = 480,
   width = 1100,
+  timeZone, // <-- NEW
 }: {
   trades: Trade[];
   range: RangeKey;
   className?: string;
   height?: number;
   width?: number;
+  timeZone?: string; // <-- NEW
 }) {
   if (!trades?.length) return null;
 
@@ -31,14 +33,15 @@ export default function PnLHistogram({
   const y0 = H - P - AY, y1 = P + 10;
   const plotW = x1 - x0, plotH = y0 - y1;
 
-  
+  // ----- helpers (use passed timeZone when formatting) -----
+  const tz = timeZone || "UTC";
   const utc = (y: number, m: number, d = 1) => new Date(Date.UTC(y, m, d));
   const addDays = (d: Date, n: number) =>
     new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() + n));
   const fmtDate = (d: Date) =>
-    new Intl.DateTimeFormat("en-US", { month: "short", day: "2-digit", timeZone: "UTC" }).format(d);
+    new Intl.DateTimeFormat("en-US", { month: "short", day: "2-digit", timeZone: tz }).format(d);
   const fmtMonth = (d: Date) =>
-    new Intl.DateTimeFormat("en-US", { month: "short", timeZone: "UTC" }).format(d);
+    new Intl.DateTimeFormat("en-US", { month: "short", timeZone: tz }).format(d);
   const fmtUsdShort = (n: number) => {
     const s = n < 0 ? "-" : "";
     const a = Math.abs(n);
@@ -123,7 +126,6 @@ export default function PnLHistogram({
     <div className={`glass p-4 ${className}`}>
       <div className="mb-2 text-sm text-zinc-400">P&amp;L</div>
       <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-auto">
-        
         <line x1={x0} y1={y0} x2={x1} y2={y0} stroke={gridColor} strokeWidth="1" />
         {yTicks.map((t, i) => (
           <line key={`gy-${i}`} x1={x0} x2={x1} y1={sy(t)} y2={sy(t)} stroke={gridColor} />
@@ -148,7 +150,7 @@ export default function PnLHistogram({
           for (let i = 0; i < n; i++) {
             if (i % baseStep !== 0 && i !== n - 1) continue;
             const x = sx(i);
-            if (!isMonthly && x - lastX < minLabelGap) continue;
+            if (!isMonthly && x - lastX < 70) continue;
             lastX = x;
             els.push(
               <text
@@ -181,7 +183,7 @@ export default function PnLHistogram({
               y={yTop}
               width={barW}
               height={h}
-              rx="10"
+              rx="3"
               fill={color}
               opacity={hi === i ? 1 : 0.92}
               onMouseEnter={() => setHi(i)}
@@ -197,7 +199,7 @@ export default function PnLHistogram({
           const yTop = isPos ? sy(v) : zeroY;
           const label = fmtUsdShort(v);
           const padX = 8;
-          const charW = 9;               
+          const charW = 9;
           const w = Math.max(44, label.length * charW + padX * 2);
           const h = 26;
           const tipX = Math.min(Math.max(cx - w / 2, x0), x1 - w);
@@ -209,7 +211,7 @@ export default function PnLHistogram({
               <text
                 x={tipX + w / 2}
                 y={tipY + h / 2 + 5}
-                fontSize="18"
+                fontSize="20"
                 textAnchor="middle"
                 fill="#fff"
               >

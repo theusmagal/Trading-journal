@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useMemo } from "react";
-import { fmtDateTime, fmtQty, pnlClass } from "@/lib/format";
+import { useMemo, useState } from "react";
+import { fmtQty, pnlClass } from "@/lib/format";
 
 type Trade = {
   id: string;
@@ -15,13 +15,39 @@ type Trade = {
 
 type ColKey = "time" | "symbol" | "side" | "qty" | "price" | "pnl";
 
-export default function TradesTable({ rows }: { rows: Trade[] }) {
+export default function TradesTable({
+  rows,
+  timeZone,
+}: {
+  rows: Trade[];
+  timeZone?: string; // ← new (optional)
+}) {
   const [sortBy, setSortBy] = useState<ColKey>("time");
   const [asc, setAsc] = useState(false);
   const [page, setPage] = useState(1);
   const pageSize = 10;
 
-  
+  // Resolve timezone once
+  const tz = useMemo(
+    () => timeZone || Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC",
+    [timeZone]
+  );
+
+  // Build a formatter once per TZ
+  const dtFmt = useMemo(
+    () =>
+      new Intl.DateTimeFormat("en-US", {
+        year: "numeric",
+        month: "short",
+        day: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+        timeZone: tz,
+      }),
+    [tz]
+  );
+  const fmtDateTime = (iso: string) => dtFmt.format(new Date(iso));
+
   const sorted = useMemo(() => {
     const s = [...rows].sort((a, b) => {
       const va = keyVal(a, sortBy);
@@ -33,12 +59,10 @@ export default function TradesTable({ rows }: { rows: Trade[] }) {
     return s;
   }, [rows, sortBy, asc]);
 
-
   const totalPages = Math.max(1, Math.ceil(sorted.length / pageSize));
   const safePage = Math.min(page, totalPages);
   const start = (safePage - 1) * pageSize;
   const pageRows = sorted.slice(start, start + pageSize);
-
   const fillers = Math.max(0, pageSize - pageRows.length);
 
   const changeSort = (k: ColKey) => {
@@ -54,13 +78,12 @@ export default function TradesTable({ rows }: { rows: Trade[] }) {
 
   if (!rows?.length) return null;
 
-  const ROW_H = 40; 
+  const ROW_H = 40;
 
   return (
     <div className="glass p-4 overflow-x-auto self-start">
       <div className="mb-2 flex items-center justify-between">
         <div className="text-sm text-zinc-400">Recent trades (mock)</div>
-
         <div className="text-xs text-zinc-400">
           Page <span className="text-zinc-200">{safePage}</span> of{" "}
           <span className="text-zinc-200">{totalPages}</span>
@@ -113,7 +136,6 @@ export default function TradesTable({ rows }: { rows: Trade[] }) {
           {/* filler rows to keep table height constant when less than 10 rows */}
           {Array.from({ length: fillers }).map((_, i) => (
             <tr key={`filler-${i}`} className="border-t border-white/10">
-              {/* transparent placeholders preserve row height */}
               {Array.from({ length: 6 }).map((__, j) => (
                 <td
                   key={j}
@@ -128,7 +150,7 @@ export default function TradesTable({ rows }: { rows: Trade[] }) {
         </tbody>
       </table>
 
-      {/* pagination controls (constant height) */}
+      {/* pagination controls */}
       <div className="mt-3 flex items-center justify-between text-xs text-zinc-400">
         <span>
           Showing <span className="text-zinc-200">{sorted.length ? start + 1 : 0}</span>–

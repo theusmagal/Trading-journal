@@ -5,7 +5,7 @@ export default function HeroPro() {
   return (
     <section className="pt-16 md:pt-24 bg-transparent">
       <Container className="grid items-center gap-10 md:grid-cols-2">
-        {/* Copy block */}
+        
         <div>
           <span
             className="inline-block rounded-full px-3 py-1 text-[11px] font-medium uppercase tracking-wider
@@ -46,7 +46,6 @@ export default function HeroPro() {
             </a>
           </div>
 
-          {/* 3 quick bullets */}
           <ul className="mt-5 grid gap-2 text-sm text-zinc-300">
             <li className="flex items-center gap-2">
               <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-emerald-500/20 text-emerald-300">✓</span>
@@ -65,9 +64,8 @@ export default function HeroPro() {
           <p className="mt-3 text-xs text-zinc-400">14-day free trial • Cancel anytime</p>
         </div>
 
-        {/* illustration block*/}
         <div className="relative">
-          {/* soft emerald glow behind the image only */}
+          
           <div
             aria-hidden
             className="absolute -top-10 -right-8 -z-10 h-64 w-64 rounded-full bg-emerald-500/20 blur-3xl md:h-80 md:w-80"
@@ -85,7 +83,6 @@ export default function HeroPro() {
             />
           </div>
 
-          {/* KPI chips */}
           <div className="mt-4 grid grid-cols-3 gap-3 text-xs">
             <div className="glass p-3 text-center">
               <div className="text-lg font-semibold text-emerald-300">+12%</div>

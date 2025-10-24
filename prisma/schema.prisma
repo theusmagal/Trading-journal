@@ -8,12 +8,23 @@ datasource db {
 }
 
 model User {
-  id             String          @id @default(cuid())
-  email          String          @unique
-  password       String
-  createdAt      DateTime        @default(now())
-  subscriptions  Subscription[]
-  brokerAccounts BrokerAccount[]
+  id               String          @id @default(cuid())
+  email            String          @unique
+  password         String
+
+  // --- Profile ---
+  name             String?
+  timezone         String?         @default("UTC")
+
+  // --- Timestamps ---
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+  stripeCustomerId String?         @unique
+  plan             String?         // e.g. "free" | "pro-monthly" | "pro-annual"
+
+  subscriptions    Subscription[]
+  brokerAccounts   BrokerAccount[]
+  apiKeys          ApiKey[]
 }
 
 model Subscription {
@@ -24,6 +35,11 @@ model Subscription {
   status               String
   currentPeriodEnd     DateTime?
   user                 User      @relation(fields: [userId], references: [id])
+
+  // Helpful indexes
+  @@index([userId])
+  @@index([stripeCustomerId])          // <— quick link to Stripe customer
+  @@unique([stripeSubscriptionId])     // each Stripe sub once
 }
 
 model BrokerAccount {
@@ -35,9 +51,13 @@ model BrokerAccount {
   apiSecretEnc String
   lastSyncAt   DateTime?
   user         User          @relation(fields: [userId], references: [id])
+
   executions   Execution[]
   trades       Trade[]
   dailyMetrics DailyMetric[]
+
+  @@index([userId])
+  @@index([userId, broker])            // <— helpful if you’ll filter by broker
 }
 
 model Execution {
@@ -53,6 +73,7 @@ model Execution {
   brokerAccount   BrokerAccount @relation(fields: [brokerAccountId], references: [id])
 
   @@index([brokerAccountId, execTime])
+  @@index([brokerAccountId, symbol, execTime])  // <— common query shape
 }
 
 model Trade {
@@ -86,4 +107,26 @@ model DailyMetric {
   brokerAccount   BrokerAccount @relation(fields: [brokerAccountId], references: [id])
 
   @@unique([brokerAccountId, date])
+}
+
+//
+// API keys vault (encrypted at rest)
+//
+model ApiKey {
+  id        String   @id @default(cuid())
+  userId    String
+  provider  String   // e.g. "binance"
+  label     String?  // "Main", "Scalping", etc.
+  keyLast4  String   // last 4 of API key for display
+  encApiKey String   // base64 ciphertext
+  encSecret String   // base64 ciphertext
+
+  status    String   @default("active") // "active" | "revoked"
+  createdAt DateTime @default(now())
+  updatedAt      DateTime        @updatedAt @default(now())
+
+  User      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, provider])
+  @@index([userId, provider, status])   // <— quick filter by status
 }

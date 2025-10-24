@@ -5,7 +5,7 @@ export default {
   theme: {
     extend: {
       boxShadow: {
-        soft: "0 0 25px rgba(16,185,129,0.08)", // <- used by .panel/.glass
+        soft: "0 0 25px rgba(16,185,129,0.08)", 
       },
     },
   },

@@ -13,6 +13,7 @@ export default function SparklineInteractive({
   xLabel,
   yLabel,
   showTooltip = true,
+  timeZone,            // <-- NEW
 }: {
   data: Pt[];
   className?: string;
@@ -23,6 +24,7 @@ export default function SparklineInteractive({
   xLabel?: string;
   yLabel?: string;
   showTooltip?: boolean;
+  timeZone?: string;   // <-- NEW
 }) {
   if (!data?.length) return null;
 
@@ -57,16 +59,14 @@ export default function SparklineInteractive({
 
   const [hi, setHi] = useState<number | null>(null);
 
+  const tz = timeZone || "UTC";
   const fmtDate = (ts: number) =>
-    new Intl.DateTimeFormat("en-US", { month: "short", day: "2-digit", timeZone: "UTC" })
+    new Intl.DateTimeFormat("en-US", { month: "short", day: "2-digit", timeZone: tz })
       .format(new Date(ts));
 
   const fmtUsdFull = (n: number) =>
-    new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: "USD",
-      maximumFractionDigits: 2,
-    }).format(n);
+    new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 2 })
+      .format(n);
 
   const fmtUsdCompact = (n: number) => {
     const sign = n < 0 ? "-" : "";
@@ -109,7 +109,7 @@ export default function SparklineInteractive({
 
   const textColor = "rgba(255,255,255,0.7)";
   const gridColor = "rgba(255,255,255,0.08)";
-  const CORNER_GAP = 34; 
+  const CORNER_GAP = 34;
 
   const nearestIndex = (xSvg: number) => {
     let idx = 0, best = Infinity;
@@ -121,7 +121,7 @@ export default function SparklineInteractive({
   };
 
   const tooltipLeftPx = (idx: number) => {
-    const pad = 120; 
+    const pad = 120;
     const raw = xsScaled[idx];
     return Math.max(plotX0 + 8, Math.min(raw + 6, W - pad));
   };
@@ -144,18 +144,11 @@ export default function SparklineInteractive({
 
         {showAxes && (
           <>
-            
             <line x1={plotX0} y1={plotY0} x2={plotX0} y2={plotY1} stroke={gridColor} />
             {yTickVals.map((v, i) => (
               <g key={`yt-${i}`}>
                 <line x1={plotX0 - 6} x2={plotX0} y1={sy(v)} y2={sy(v)} stroke={gridColor} />
-                <text
-                  x={plotX0 - 10}
-                  y={sy(v) + 3}
-                  fontSize="11"
-                  textAnchor="end"
-                  fill={textColor}
-                >
+                <text x={plotX0 - 10} y={sy(v) + 3} fontSize="11" textAnchor="end" fill={textColor}>
                   {fmtUsdCompact(v)}
                 </text>
               </g>
@@ -167,13 +160,7 @@ export default function SparklineInteractive({
               return (
                 <g key={`xt-${i}`}>
                   <line x1={xx} x2={xx} y1={plotY0} y2={plotY0 + 6} stroke={gridColor} />
-                  <text
-                    x={xx}
-                    y={plotY0 + 16}
-                    fontSize="11"
-                    textAnchor="middle"
-                    fill={textColor}
-                  >
+                  <text x={xx} y={plotY0 + 16} fontSize="11" textAnchor="middle" fill={textColor}>
                     {fmtDate(series[idx].x)}
                   </text>
                 </g>
@@ -206,15 +193,7 @@ export default function SparklineInteractive({
           </>
         )}
 
-        
-        <path
-          d={path}
-          fill="none"
-          stroke="#34d399"
-          strokeWidth="3"
-          strokeLinejoin="round"
-          strokeLinecap="round"
-        />
+        <path d={path} fill="none" stroke="#34d399" strokeWidth="3" strokeLinejoin="round" strokeLinecap="round" />
         <path
           d={`${path} L ${sx(series[series.length - 1].x)},${plotY0} L ${sx(series[0].x)},${plotY0} Z`}
           fill="url(#equityFill)"
@@ -253,10 +232,7 @@ export default function SparklineInteractive({
       {showTooltip && hi !== null && (
         <div
           className="pointer-events-none absolute rounded-md border border-white/10 bg-black/70 px-2 py-1 text-xs text-zinc-100"
-          style={{
-            left: tooltipLeftPx(hi),
-            top: 6,
-          }}
+          style={{ left: tooltipLeftPx(hi), top: 6 }}
         >
           <div>{fmtDate(series[hi].x)}</div>
           <div className="font-medium">{fmtUsdFull(series[hi].y)}</div>

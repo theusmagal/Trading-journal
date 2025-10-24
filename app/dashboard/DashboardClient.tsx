@@ -68,6 +68,10 @@ export default function DashboardClient({
   const [data, setData] = useState<Summary>(initial);
   const [loading, setLoading] = useState(false);
 
+  const tz = useMemo(
+    () => Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC", []
+  );
+
   const now = new Date();
   const [calYear, setCalYear] = useState(now.getUTCFullYear());
   const [calMonth, setCalMonth] = useState(now.getUTCMonth()); // 0..11
@@ -168,6 +172,7 @@ export default function DashboardClient({
 
   return (
     <div className="space-y-6">
+      {/* Range selector */}
       <div className="flex items-center gap-2">
         {(["7d", "30d", "ytd", "all"] as RangeKey[]).map((r) => {
           const active = range === r;
@@ -192,6 +197,7 @@ export default function DashboardClient({
         {loading && <span className="text-xs text-zinc-400">Loading…</span>}
       </div>
 
+      {/* Top strip: Total P&L + Motivation banner */}
       <section className="flex flex-col md:flex-row gap-4">
         <div className="md:w-[420px]">
           <KPI label="Total P&L" value={fmtUsd(data.kpis.netPnl)} forceGreen />
@@ -216,6 +222,7 @@ export default function DashboardClient({
         </div>
       </section>
 
+      {/* Balance growth chart (labels/tooltips use local timezone) */}
       <section className="glass p-4">
         <div className="mb-2 text-sm text-zinc-400">Balance growth — {prettyRange}</div>
         <SparklineInteractive
@@ -226,9 +233,11 @@ export default function DashboardClient({
           yTicks={4}
           xTicks={5}
           showTooltip
+          timeZone={tz}
         />
       </section>
 
+      {/* visual summary widgets */}
       <div className="grid gap-4 md:grid-cols-3">
         <GaugeWinRate wins={stats.wins} losses={stats.losses} />
         <DonutProfitSplit
@@ -239,6 +248,7 @@ export default function DashboardClient({
         <AvgWinLossBar avgWin={stats.avgWin} avgLossAbs={stats.avgLossAbs} />
       </div>
 
+      {/* calendar + trades */}
       <div className="grid gap-6 lg:grid-cols-2 items-stretch">
         <div className="h-full">
           <CalendarPreview
@@ -254,6 +264,7 @@ export default function DashboardClient({
         </div>
       </div>
 
+      {/* extras (histogram labels/tooltips use local timezone) */}
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="lg:col-span-1">
           <TopSymbols trades={data.trades} />
@@ -264,6 +275,7 @@ export default function DashboardClient({
             range={range}
             height={480}
             className="min-h-[360px]"
+            timeZone={tz}
           />
         </div>
       </div>
