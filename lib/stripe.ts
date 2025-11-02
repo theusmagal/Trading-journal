@@ -1,8 +1,10 @@
 
 import Stripe from "stripe";
-export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: "2024-06-20",
-});
+
+export const StripePkg = Stripe;
+
+export type StripeSub = Stripe.Subscription;
+export const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!);
 
 export function createPortalSession(customerId: string, returnUrl: string) {
   return stripe.billingPortal.sessions.create({

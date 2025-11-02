@@ -5,7 +5,6 @@ export default function HeroPro() {
   return (
     <section className="pt-16 md:pt-24 bg-transparent">
       <Container className="grid items-center gap-10 md:grid-cols-2">
-        
         <div>
           <span
             className="inline-block rounded-full px-3 py-1 text-[11px] font-medium uppercase tracking-wider
@@ -27,8 +26,9 @@ export default function HeroPro() {
           </p>
 
           <div className="mt-8 flex items-center gap-3">
+            {/* Pass default plan so we auto-checkout after sign-up */}
             <a
-              href="/auth/register"
+              href="/auth/register?plan=monthly"
               className="rounded-md px-5 py-3 font-medium
                          bg-emerald-500 text-zinc-900 hover:bg-emerald-400
                          focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/70
@@ -65,12 +65,10 @@ export default function HeroPro() {
         </div>
 
         <div className="relative">
-          
           <div
             aria-hidden
             className="absolute -top-10 -right-8 -z-10 h-64 w-64 rounded-full bg-emerald-500/20 blur-3xl md:h-80 md:w-80"
           />
-
           <div className="glass p-3">
             <Image
               src="/marketing/hero-dashboard.png"

@@ -1,3 +1,4 @@
+// app/components/PricingTable.tsx
 export default function PricingTable({ highlightAnnual = true }: { highlightAnnual?: boolean }) {
   return (
     <section className="py-12 md:py-16 bg-transparent">
@@ -14,7 +15,9 @@ export default function PricingTable({ highlightAnnual = true }: { highlightAnnu
           <div
             className={[
               "glass p-6",
-              highlightAnnual ? "ring-1 ring-emerald-400/30 shadow-[0_0_30px_rgba(16,185,129,.18)]" : "",
+              highlightAnnual
+                ? "ring-1 ring-emerald-400/30 shadow-[0_0_30px_rgba(16,185,129,.18)]"
+                : "",
             ].join(" ")}
           >
             <h3 className="font-semibold text-zinc-100">Yearly</h3>
@@ -29,8 +32,9 @@ export default function PricingTable({ highlightAnnual = true }: { highlightAnnu
               <li>Priority support</li>
             </ul>
 
+            {/* ✅ Pass plan=annual so it auto-redirects to Stripe after sign-up */}
             <a
-              href="/auth/register"
+              href="/auth/register?plan=annual"
               className="mt-6 inline-block w-full rounded-md px-5 py-3 text-center font-medium
                          bg-emerald-500 text-zinc-900 hover:bg-emerald-400
                          focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/70
@@ -53,8 +57,9 @@ export default function PricingTable({ highlightAnnual = true }: { highlightAnnu
               <li>Cancel anytime</li>
             </ul>
 
+            {/* ✅ Pass plan=monthly as well */}
             <a
-              href="/auth/register"
+              href="/auth/register?plan=monthly"
               className="mt-6 inline-block w-full rounded-md px-5 py-3 text-center font-medium
                          border border-zinc-700/70 text-zinc-200 hover:bg-zinc-900/60
                          focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/60 transition"

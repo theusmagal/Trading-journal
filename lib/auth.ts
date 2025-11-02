@@ -1,4 +1,4 @@
-
+// lib/auth.ts
 import type { NextAuthOptions } from "next-auth";
 import { getServerSession } from "next-auth";
 import Credentials from "next-auth/providers/credentials";
@@ -41,9 +41,18 @@ export const authOptions: NextAuthOptions = {
   },
 };
 
+/** Get server session using our configured options */
+export async function auth() {
+  return getServerSession(authOptions);
+}
+
+/** Convenience: require a user ID or redirect to login */
 export async function authUserId(): Promise<string> {
-  const session = await getServerSession(authOptions);
+  const session = await auth();
   const id = (session?.user as any)?.id as string | undefined;
   if (!id) redirect("/auth/login");
   return id!;
 }
+
+/** Default export so you can `import auth from "@/lib/auth"` */
+export default auth;

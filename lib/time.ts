@@ -1,4 +1,4 @@
-// lib/time.ts
+
 export function userTimeZone(profileTz?: string) {
   return profileTz || Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
 }
