@@ -115,7 +115,7 @@ export default function Header() {
                 Login
               </Link>
               <Link
-                href="/auth/register"
+                href="/pricing"
                 className="px-3 py-1.5 rounded-md bg-emerald-500 text-zinc-900 font-medium
                            hover:bg-emerald-400 focus-visible:outline-none focus-visible:ring-2
                            focus-visible:ring-emerald-400/70"
@@ -234,7 +234,7 @@ export default function Header() {
                   Login
                 </Link>
                 <Link
-                  href="/auth/register"
+                  href="/pricing"
                   className="rounded-md bg-emerald-500 px-3 py-2 text-center font-medium text-zinc-900
                              hover:bg-emerald-400 focus-visible:outline-none focus-visible:ring-2
                              focus-visible:ring-emerald-400/70"

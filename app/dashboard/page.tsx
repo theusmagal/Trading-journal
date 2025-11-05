@@ -1,7 +1,7 @@
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
 import { headers } from "next/headers";
+import { requireMember } from "@/lib/membership";
 import DashboardClient from "./DashboardClient";
+import type { Metadata } from "next";
 
 type RangeKey = "7d" | "30d" | "ytd" | "all";
 
@@ -10,38 +10,36 @@ type HeaderLike = { get(name: string): string | null };
 
 function baseFrom(h: HeaderLike) {
   const proto = h.get("x-forwarded-proto") ?? "http";
-  const host  = h.get("x-forwarded-host") ?? h.get("host");
+  const host = h.get("x-forwarded-host") ?? h.get("host");
   return `${proto}://${host}`;
 }
+
+export const metadata: Metadata = {
+  title: "Dashboard • Trading Journal",
+};
 
 export default async function DashboardPage({
   searchParams,
 }: {
   searchParams: Promise<{ range?: RangeKey }>;
 }) {
-  const session = await getServerSession(authOptions);
-  if (!session) {
-    return (
-      <div className="p-8">
-        <p>You must be signed in.</p>
-        <a className="underline" href="/auth/login">Go to login</a>
-      </div>
-    );
-  }
+  // Block access unless user is an active member (or trial, depending on your requireMember logic)
+  await requireMember();
 
   const sp = await searchParams;
   const initialRange: RangeKey = (sp?.range as RangeKey) ?? "30d";
 
-  // important: await headers()
   const h = await headers();
   const base = baseFrom(h);
 
-  const res = await fetch(`${base}/api/me/summary?range=${initialRange}`, { cache: "no-store" });
+  const res = await fetch(`${base}/api/me/summary?range=${initialRange}`, {
+    cache: "no-store",
+  });
   const data = await res.json();
 
   return (
     <div className="mx-auto max-w-6xl px-6 py-8">
-      <h1 className="text-2xl font-semibold mb-6">Dashboard</h1>
+      <h1 className="mb-6 text-2xl font-semibold">Dashboard</h1>
       <DashboardClient initial={data} initialRange={initialRange} />
     </div>
   );

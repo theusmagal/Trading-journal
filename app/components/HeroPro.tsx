@@ -28,7 +28,7 @@ export default function HeroPro() {
           <div className="mt-8 flex items-center gap-3">
             {/* Pass default plan so we auto-checkout after sign-up */}
             <a
-              href="/auth/register?plan=monthly"
+              href="/pricing"
               className="rounded-md px-5 py-3 font-medium
                          bg-emerald-500 text-zinc-900 hover:bg-emerald-400
                          focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/70

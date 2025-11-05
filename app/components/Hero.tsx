@@ -28,7 +28,7 @@ export default function Hero() {
 
         <div className="mt-8 flex items-center justify-center gap-3">
           <a
-            href="/auth/register"
+            href="/pricing"
             className="
               rounded-lg px-5 py-3 font-medium transition
               bg-emerald-600 text-white hover:bg-emerald-500

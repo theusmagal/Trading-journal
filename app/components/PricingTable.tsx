@@ -32,15 +32,15 @@ export default function PricingTable({ highlightAnnual = true }: { highlightAnnu
               <li>Priority support</li>
             </ul>
 
-            {/* ✅ Pass plan=annual so it auto-redirects to Stripe after sign-up */}
+            {/* Use the unified auto-checkout flow */}
             <a
-              href="/auth/register?plan=annual"
+              href="/auth/auto-checkout?plan=annual"
               className="mt-6 inline-block w-full rounded-md px-5 py-3 text-center font-medium
                          bg-emerald-500 text-zinc-900 hover:bg-emerald-400
                          focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/70
                          shadow-[0_0_20px_rgba(16,185,129,.18)] hover:shadow-[0_0_26px_rgba(16,185,129,.24)] transition"
             >
-              Start free trial
+              Start 14-day trial — Annual
             </a>
           </div>
 
@@ -57,14 +57,13 @@ export default function PricingTable({ highlightAnnual = true }: { highlightAnnu
               <li>Cancel anytime</li>
             </ul>
 
-            {/* ✅ Pass plan=monthly as well */}
             <a
-              href="/auth/register?plan=monthly"
+              href="/auth/auto-checkout?plan=monthly"
               className="mt-6 inline-block w-full rounded-md px-5 py-3 text-center font-medium
                          border border-zinc-700/70 text-zinc-200 hover:bg-zinc-900/60
                          focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/60 transition"
             >
-              Start monthly
+              Start 14-day trial — Monthly
             </a>
           </div>
         </div>
