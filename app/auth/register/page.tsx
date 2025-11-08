@@ -1,4 +1,3 @@
-// app/auth/register/page.tsx
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
@@ -7,10 +6,30 @@ import { signIn } from "next-auth/react";
 
 type Plan = "monthly" | "annual";
 
+function getApiError(u: unknown): string | undefined {
+  if (u && typeof u === "object") {
+    const rec = u as Record<string, unknown>;
+    if (typeof rec.error === "string") return rec.error;
+  }
+  return undefined;
+}
+
 function getErrorMessage(e: unknown): string {
   if (e instanceof Error) return e.message;
   if (typeof e === "string") return e;
   return "Something went wrong";
+}
+
+function hasOk(x: unknown): x is { ok: boolean } {
+  return !!(x && typeof x === "object" && "ok" in (x as Record<string, unknown>));
+}
+
+function hasError(x: unknown): x is { error: string } {
+  return !!(
+    x &&
+    typeof x === "object" &&
+    typeof (x as Record<string, unknown>).error === "string"
+  );
 }
 
 export default function RegisterPage() {
@@ -40,21 +59,19 @@ export default function RegisterPage() {
 
       if (!r.ok) {
         const data: unknown = await r.json().catch(() => ({}));
-        const apiError =
-          typeof data === "object" && data && "error" in data && typeof (data as any).error === "string"
-            ? (data as any).error
-            : undefined;
+        const apiError = getApiError(data);
         throw new Error(apiError ?? `Failed to register (${r.status})`);
       }
 
-      // Auto sign-in
+      // Auto sign-in without redirect
       const res = await signIn("credentials", { email, password, redirect: false });
-      if (!res || res.error) throw new Error(res?.error || "Auto sign-in failed");
 
-      // Redirect user
-      if (plan) router.push(`/auth/auto-checkout?plan=${plan}`);
-      else router.push("/dashboard");
-    } catch (e: unknown) {
+      if (!res) throw new Error("Auto sign-in failed");
+      if (hasError(res)) throw new Error(res.error);
+      if (hasOk(res) && !res.ok) throw new Error("Auto sign-in failed");
+
+      router.push(plan ? `/auth/auto-checkout?plan=${plan}` : "/dashboard");
+    } catch (e) {
       setErr(getErrorMessage(e));
     } finally {
       setLoading(false);
@@ -82,7 +99,6 @@ export default function RegisterPage() {
           onChange={(e) => setEmail(e.target.value)}
           autoComplete="email"
         />
-
         <input
           className="w-full border p-2 rounded"
           type="password"
@@ -96,11 +112,17 @@ export default function RegisterPage() {
 
         {err && <p className="text-red-600 text-sm">{err}</p>}
 
-        <button disabled={loading} className="w-full bg-emerald-600 text-white p-2 rounded disabled:opacity-60">
+        <button
+          disabled={loading}
+          className="w-full bg-emerald-600 text-white p-2 rounded disabled:opacity-60"
+        >
           {loading ? "Creating…" : plan ? "Create & continue" : "Create account"}
         </button>
 
-        <a href={`/auth/login${plan ? `?plan=${plan}` : ""}`} className="block text-sm underline">
+        <a
+          href={`/auth/login${plan ? `?plan=${plan}` : ""}`}
+          className="block text-sm underline text-center"
+        >
           Back to login
         </a>
       </form>
