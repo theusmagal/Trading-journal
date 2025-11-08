@@ -1,16 +1,25 @@
+// app/auth/register/page.tsx
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState, useMemo } from "react";
 import { signIn } from "next-auth/react";
 
+type Plan = "monthly" | "annual";
+
+function getErrorMessage(e: unknown): string {
+  if (e instanceof Error) return e.message;
+  if (typeof e === "string") return e;
+  return "Something went wrong";
+}
+
 export default function RegisterPage() {
   const router = useRouter();
   const search = useSearchParams();
 
-  const plan = useMemo<"monthly" | "annual" | undefined>(() => {
+  const plan = useMemo<Plan | undefined>(() => {
     const p = (search.get("plan") || "").toLowerCase();
-    return p === "monthly" || p === "annual" ? (p as "monthly" | "annual") : undefined;
+    return p === "monthly" || p === "annual" ? (p as Plan) : undefined;
   }, [search]);
 
   const [email, setEmail] = useState("");
@@ -30,18 +39,23 @@ export default function RegisterPage() {
       });
 
       if (!r.ok) {
-        const data = await r.json().catch(() => ({}));
-        throw new Error(data.error ?? "Failed to register");
+        const data: unknown = await r.json().catch(() => ({}));
+        const apiError =
+          typeof data === "object" && data && "error" in data && typeof (data as any).error === "string"
+            ? (data as any).error
+            : undefined;
+        throw new Error(apiError ?? `Failed to register (${r.status})`);
       }
 
-      // Auto sign-in (no extra login step)
+      // Auto sign-in
       const res = await signIn("credentials", { email, password, redirect: false });
-      if (!res?.ok) throw new Error("Auto sign-in failed");
+      if (!res || res.error) throw new Error(res?.error || "Auto sign-in failed");
 
+      // Redirect user
       if (plan) router.push(`/auth/auto-checkout?plan=${plan}`);
       else router.push("/dashboard");
-    } catch (e: any) {
-      setErr(e.message || "Something went wrong");
+    } catch (e: unknown) {
+      setErr(getErrorMessage(e));
     } finally {
       setLoading(false);
     }
@@ -68,6 +82,7 @@ export default function RegisterPage() {
           onChange={(e) => setEmail(e.target.value)}
           autoComplete="email"
         />
+
         <input
           className="w-full border p-2 rounded"
           type="password"
@@ -81,7 +96,7 @@ export default function RegisterPage() {
 
         {err && <p className="text-red-600 text-sm">{err}</p>}
 
-        <button disabled={loading} className="w-full bg-emerald-600 text-white p-2 rounded">
+        <button disabled={loading} className="w-full bg-emerald-600 text-white p-2 rounded disabled:opacity-60">
           {loading ? "Creating…" : plan ? "Create & continue" : "Create account"}
         </button>
 
