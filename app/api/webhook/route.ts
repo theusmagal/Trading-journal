@@ -1,36 +1,45 @@
 // app/api/webhook/route.ts
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { stripe } from "@/lib/stripe"; // ← use your shared client
+import { stripe } from "@/lib/stripe";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-// Narrow safely; avoid referencing Stripe.Subscription at the type level here
-function subTimes(s: unknown) {
-  if (
-    s &&
-    typeof s === "object" &&
-    "current_period_end" in s &&
-    "trial_end" in s
-  ) {
-    const sub = s as { current_period_end?: number | null; trial_end?: number | null };
-    const currentPeriodEnd =
-      typeof sub.current_period_end === "number"
-        ? new Date(sub.current_period_end * 1000)
-        : null;
-    const trialEnd =
-      typeof sub.trial_end === "number"
-        ? new Date(sub.trial_end * 1000)
-        : null;
-    return { currentPeriodEnd, trialEnd };
-  }
-  return { currentPeriodEnd: null, trialEnd: null };
+/** Minimal shapes we actually use (avoid importing Stripe types on edge) */
+type CheckoutSessionLike = {
+  customer?: string | null;
+  subscription?: string | null;
+};
+
+type SubscriptionLike = {
+  id: string;
+  customer: string | null;
+  status: string;
+  metadata?: Record<string, unknown> | null;
+  current_period_end?: number | null;
+  trial_end?: number | null;
+};
+
+function isCheckoutSession(x: unknown): x is CheckoutSessionLike {
+  return !!x && typeof x === "object";
 }
 
-function mapPlan(meta: string | undefined | null): "PRO_MONTHLY" | "PRO_ANNUAL" | null {
-  if (meta === "monthly") return "PRO_MONTHLY";
-  if (meta === "annual") return "PRO_ANNUAL";
+function isSubscription(x: unknown): x is SubscriptionLike {
+  return !!x && typeof x === "object" && "id" in x && "status" in x;
+}
+
+function subTimes(s: SubscriptionLike | null | undefined) {
+  const currentPeriodEnd =
+    s?.current_period_end != null ? new Date(s.current_period_end * 1000) : null;
+  const trialEnd = s?.trial_end != null ? new Date(s.trial_end * 1000) : null;
+  return { currentPeriodEnd, trialEnd };
+}
+
+function mapPlan(meta: unknown): "PRO_MONTHLY" | "PRO_ANNUAL" | null {
+  const m = typeof meta === "string" ? meta : undefined;
+  if (m === "monthly") return "PRO_MONTHLY";
+  if (m === "annual") return "PRO_ANNUAL";
   return null;
 }
 
@@ -40,41 +49,52 @@ export async function POST(req: Request) {
 
   const rawBody = await req.text();
 
-  let event;
+  let event: unknown;
   try {
     event = stripe.webhooks.constructEvent(
       rawBody,
       sig,
-      process.env.STRIPE_WEBHOOK_SECRET!
+      process.env.STRIPE_WEBHOOK_SECRET as string
     );
-  } catch (err: any) {
-    console.error("[webhook] signature verify failed:", err?.message);
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error("[webhook] signature verify failed:", msg);
     return NextResponse.json({ error: "Invalid signature" }, { status: 400 });
   }
 
+  // At runtime this is a Stripe.Event; we only use the parts we need
+  const ev = event as { type: string; data: { object: unknown } };
+
   try {
-    switch (event.type) {
+    switch (ev.type) {
       case "checkout.session.completed": {
-        const session = event.data.object as any; // Checkout.Session
-        const customerId = (session.customer as string) || "";
-        const subscriptionId = (session.subscription as string) || "";
+        const session = ev.data.object;
+        if (!isCheckoutSession(session)) break;
+
+        const customerId = session.customer ?? "";
+        const subscriptionId = session.subscription ?? "";
         if (!subscriptionId) {
           console.warn("[webhook] checkout.session.completed: missing subscriptionId");
           break;
         }
 
-        const sub = await stripe.subscriptions.retrieve(subscriptionId);
+        const subFetched = await stripe.subscriptions.retrieve(subscriptionId);
+        const sub = subFetched as unknown as SubscriptionLike;
+
         const byCustomer = await prisma.user.findFirst({
           where: { stripeCustomerId: customerId },
           select: { id: true },
         });
-        const userId = byCustomer?.id ?? (sub.metadata?.userId as string | undefined);
+        const userId =
+          byCustomer?.id ??
+          (typeof sub.metadata?.userId === "string" ? sub.metadata.userId : undefined);
+
         if (!userId) {
           console.warn("[webhook] checkout.session.completed: no userId");
           break;
         }
 
-        const plan = mapPlan(sub.metadata?.plan as string | undefined);
+        const plan = mapPlan(sub.metadata?.plan);
         const { currentPeriodEnd, trialEnd } = subTimes(sub);
 
         await prisma.user.update({
@@ -111,21 +131,26 @@ export async function POST(req: Request) {
       case "customer.subscription.created":
       case "customer.subscription.updated":
       case "customer.subscription.deleted": {
-        const sub = event.data.object as any; // Stripe.Subscription at runtime
-        const subscriptionId = sub.id as string;
-        const customerId = (sub.customer as string) || "";
+        const subObj = ev.data.object;
+        if (!isSubscription(subObj)) break;
+
+        const subscriptionId = subObj.id;
+        const customerId = subObj.customer ?? "";
 
         const byCustomer = await prisma.user.findFirst({
           where: { stripeCustomerId: customerId },
           select: { id: true },
         });
-        const userId = byCustomer?.id ?? (sub.metadata?.userId as string | undefined);
+        const userId =
+          byCustomer?.id ??
+          (typeof subObj.metadata?.userId === "string" ? subObj.metadata.userId : undefined);
+
         if (!userId) {
-          console.warn(`[webhook] ${event.type}: no userId`);
+          console.warn(`[webhook] ${ev.type}: no userId`);
           break;
         }
 
-        const { currentPeriodEnd, trialEnd } = subTimes(sub);
+        const { currentPeriodEnd, trialEnd } = subTimes(subObj);
 
         await prisma.billingSubscription.upsert({
           where: { stripeSubscriptionId: subscriptionId },
@@ -133,25 +158,27 @@ export async function POST(req: Request) {
             userId,
             stripeCustomerId: customerId,
             stripeSubscriptionId: subscriptionId,
-            status: sub.status,
+            status: subObj.status,
             currentPeriodEnd,
             trialEnd,
           },
           update: {
-            status: sub.status,
+            status: subObj.status,
             currentPeriodEnd,
             trialEnd,
           },
         });
 
+        const isInactive = ["canceled", "unpaid", "incomplete_expired"].includes(
+          subObj.status
+        );
+
         await prisma.user.update({
           where: { id: userId },
           data: {
-            stripeSubId: sub.id,
-            subscriptionStatus: sub.status,
-            ...( ["canceled", "unpaid", "incomplete_expired"].includes(sub.status as string)
-              ? { plan: null }
-              : {} ),
+            stripeSubId: subObj.id,
+            subscriptionStatus: subObj.status,
+            ...(isInactive ? { plan: null } : {}),
           },
         });
 
@@ -159,10 +186,11 @@ export async function POST(req: Request) {
       }
 
       default:
-        console.log("[webhook] Unhandled event:", event.type);
+        console.log("[webhook] Unhandled event:", ev.type);
     }
-  } catch (err) {
-    console.error("[webhook] handler error:", err);
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error("[webhook] handler error:", msg);
   }
 
   return NextResponse.json({ ok: true });

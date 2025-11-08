@@ -38,7 +38,7 @@ export async function POST(req: NextRequest) {
   const { name, email, password } = parsed.data;
 
   try {
-    // Optional: quick existence check (not strictly required if we catch P2002)
+    // Optional early existence check
     const existing = await prisma.user.findUnique({
       where: { email },
       select: { id: true },
@@ -52,14 +52,13 @@ export async function POST(req: NextRequest) {
     await prisma.user.create({
       data: {
         email,
-        password: hash, // keep your current column name; if you use `passwordHash`, change here
+        password: hash, // keep your current column name
         name,
       },
     });
 
     return NextResponse.json({ ok: true });
   } catch (e: unknown) {
-    // Handle unique constraint race-condition safely
     if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002") {
       return NextResponse.json({ error: "Email already in use" }, { status: 409 });
     }

@@ -45,9 +45,9 @@ export async function addBinanceKey(formData: FormData) {
 
 export async function revokeApiKey(id: string) {
   const userId = await authUserId();
-  // Optional: check key belongs to user
-  await prisma.apiKey.update({
-    where: { id },
+  // Enforce ownership (and avoids "unused var" warning)
+  await prisma.apiKey.updateMany({
+    where: { id, userId },
     data: { status: "revoked" },
   });
   revalidatePath("/settings/integrations");
