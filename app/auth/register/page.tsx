@@ -1,48 +1,72 @@
+// app/auth/register/page.tsx
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState, useMemo } from "react";
 import { signIn } from "next-auth/react";
 
+type Plan = "monthly" | "annual";
+
 export default function RegisterPage() {
   const router = useRouter();
   const search = useSearchParams();
 
-  const plan = useMemo<"monthly" | "annual" | undefined>(() => {
+  const plan = useMemo<Plan | undefined>(() => {
     const p = (search.get("plan") || "").toLowerCase();
-    return p === "monthly" || p === "annual" ? (p as "monthly" | "annual") : undefined;
+    return p === "monthly" || p === "annual" ? (p as Plan) : undefined;
   }, [search]);
 
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const [email, setEmail] = useState<string>("");
+  const [password, setPassword] = useState<string>("");
   const [err, setErr] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState<boolean>(false);
 
-  async function onSubmit(e: React.FormEvent) {
+  async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
+    if (loading) return;
+
     setErr(null);
     setLoading(true);
     try {
-      const r = await fetch("/api/register", {
+      // Match your API route path
+      const r = await fetch("/api/auth/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
+        credentials: "same-origin",
+        body: JSON.stringify({ email: email.trim().toLowerCase(), password }),
       });
 
       if (!r.ok) {
-        const data = await r.json().catch(() => ({}));
-        throw new Error(data.error ?? "Failed to register");
+        let msg = `Failed to register (${r.status})`;
+        try {
+          const data: unknown = await r.json();
+          if (data && typeof data === "object" && "error" in data) {
+            const d = data as { error?: string };
+            if (d.error) msg = d.error;
+          }
+        } catch {
+          /* ignore JSON parse errors */
+        }
+        throw new Error(msg);
       }
 
-      // Auto sign-in (no extra login step)
-      const res = await signIn("credentials", { email, password, redirect: false });
-      if (!res?.ok) throw new Error("Auto sign-in failed");
+      // Auto sign-in with credentials
+      const res = await signIn("credentials", {
+        email,
+        password,
+        redirect: false,
+      });
 
-      if (plan) router.push(`/auth/auto-checkout?plan=${plan}`);
-      else router.push("/dashboard");
-    } catch (e: any) {
-      setErr(e.message || "Something went wrong");
-    } finally {
+      if (!res || res.error) {
+        throw new Error(res?.error || "Auto sign-in failed");
+      }
+
+      // Route based on selected plan
+      if (plan) router.replace(`/auth/auto-checkout?plan=${plan}`);
+      else router.replace("/dashboard");
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : "Something went wrong";
+      setErr(msg);
       setLoading(false);
     }
   }
@@ -60,7 +84,7 @@ export default function RegisterPage() {
         )}
 
         <input
-          className="w-full border p-2 rounded"
+          className="w-full border p-2 rounded bg-zinc-900 border-white/10 outline-none"
           type="email"
           placeholder="Email"
           required
@@ -69,23 +93,29 @@ export default function RegisterPage() {
           autoComplete="email"
         />
         <input
-          className="w-full border p-2 rounded"
+          className="w-full border p-2 rounded bg-zinc-900 border-white/10 outline-none"
           type="password"
-          placeholder="Password (min 6 chars)"
+          placeholder="Password (min 8 chars)"
           required
-          minLength={6}
+          minLength={8} // keep in sync with server zod schema
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           autoComplete="new-password"
         />
 
-        {err && <p className="text-red-600 text-sm">{err}</p>}
+        {err && <p className="text-red-500 text-sm">{err}</p>}
 
-        <button disabled={loading} className="w-full bg-emerald-600 text-white p-2 rounded">
+        <button
+          disabled={loading}
+          className="w-full bg-emerald-600 text-white p-2 rounded disabled:opacity-60"
+        >
           {loading ? "Creating…" : plan ? "Create & continue" : "Create account"}
         </button>
 
-        <a href={`/auth/login${plan ? `?plan=${plan}` : ""}`} className="block text-sm underline">
+        <a
+          href={`/auth/login${plan ? `?plan=${plan}` : ""}`}
+          className="block text-sm underline text-zinc-300"
+        >
           Back to login
         </a>
       </form>
