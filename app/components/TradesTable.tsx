@@ -251,6 +251,7 @@ function keyVal(t: Trade, k: ColKey): number | string {
 }
 
 function pageButtons(current: number, total: number): number[] {
+  
   const span = 7;
   const half = Math.floor(span / 2);
   let start = Math.max(1, current - half);
