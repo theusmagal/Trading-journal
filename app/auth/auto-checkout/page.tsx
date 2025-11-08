@@ -2,10 +2,13 @@
 import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
+type Plan = "monthly" | "annual";
+type SessionResponse = { user?: { id: string; email?: string } } | null;
+
 export default function AutoCheckoutPage() {
   const search = useSearchParams();
   const router = useRouter();
-  const plan = (search.get("plan") === "annual" ? "annual" : "monthly") as "monthly" | "annual";
+  const plan: Plan = (search.get("plan") === "annual" ? "annual" : "monthly") as Plan;
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -15,7 +18,7 @@ export default function AutoCheckoutPage() {
       try {
         // 1) Check session first
         const sessRes = await fetch("/api/auth/session", { credentials: "same-origin" });
-        const sess = await sessRes.json().catch(() => ({}));
+        const sess: SessionResponse = await sessRes.json().catch(() => null);
 
         if (!sess?.user) {
           // Not logged in -> go create account with plan carried over
@@ -32,18 +35,21 @@ export default function AutoCheckoutPage() {
         });
 
         if (!res.ok) {
-          const j = await res.json().catch(() => ({}));
+          const j = (await res.json().catch(() => ({}))) as { error?: string };
           throw new Error(j.error || `Failed to create checkout (${res.status})`);
         }
 
-        const { url } = await res.json();
+        const { url } = (await res.json()) as { url?: string };
         if (!cancelled && url) window.location.href = url;
-      } catch (e: any) {
-        if (!cancelled) setError(e.message || "Unexpected error");
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : "Unexpected error";
+        if (!cancelled) setError(message);
       }
     })();
 
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [plan, router]);
 
   if (error) {

@@ -3,6 +3,19 @@ import { useMemo, useState } from "react";
 
 type Pt = { x: number; y: number };
 
+type Props = {
+  data: Pt[];
+  className?: string;
+  showAxes?: boolean;
+  showGrid?: boolean;
+  yTicks?: number;
+  xTicks?: number;
+  xLabel?: string;
+  yLabel?: string;
+  showTooltip?: boolean;
+  timeZone?: string;
+};
+
 export default function SparklineInteractive({
   data,
   className = "",
@@ -13,28 +26,23 @@ export default function SparklineInteractive({
   xLabel,
   yLabel,
   showTooltip = true,
-  timeZone,            // <-- NEW
-}: {
-  data: Pt[];
-  className?: string;
-  showAxes?: boolean;
-  showGrid?: boolean;
-  yTicks?: number;
-  xTicks?: number;
-  xLabel?: string;
-  yLabel?: string;
-  showTooltip?: boolean;
-  timeZone?: string;   // <-- NEW
-}) {
-  if (!data?.length) return null;
+  timeZone,
+}: Props) {
+  // ⬇️ Hooks must be called before any early return
+  const [hi, setHi] = useState<number | null>(null);
 
   const series = useMemo(() => {
+    if (!data?.length) return [] as Pt[];
     const s = [...data]
       .filter((d) => Number.isFinite(d.x) && Number.isFinite(d.y))
       .sort((a, b) => a.x - b.x);
     return s.filter((d, i) => (i === 0 ? true : d.x !== s[i - 1].x));
   }, [data]);
 
+  const hasData = series.length > 0;
+  if (!hasData) return null;
+
+  // ---- scales & geometry
   const xs = series.map((d) => d.x);
   const ys = series.map((d) => d.y);
   const minX = Math.min(...xs), maxX = Math.max(...xs);
@@ -57,8 +65,7 @@ export default function SparklineInteractive({
   const path = series.map((p, i) => `${i ? "L" : "M"}${sx(p.x)},${sy(p.y)}`).join(" ");
   const xsScaled = series.map((p) => sx(p.x));
 
-  const [hi, setHi] = useState<number | null>(null);
-
+  // ---- formatters
   const tz = timeZone || "UTC";
   const fmtDate = (ts: number) =>
     new Intl.DateTimeFormat("en-US", { month: "short", day: "2-digit", timeZone: tz })
@@ -78,10 +85,10 @@ export default function SparklineInteractive({
     else if (abs >= 1_000) { value = abs / 1_000; suffix = "K"; }
     else return `${sign}$${Math.round(abs).toLocaleString("en-US")}`;
     const rounded = abs >= 100_000 ? Math.round(value) : Math.round(value * 10) / 10;
-    const text = Number.isInteger(rounded) ? `${rounded}` : `${rounded}`;
-    return `${sign}$${text}${suffix}`;
+    return `${sign}$${rounded}${suffix}`;
   };
 
+  // ---- ticks
   const niceStep = (range: number, approx: number) => {
     const raw = range / Math.max(1, approx);
     const pow10 = Math.pow(10, Math.floor(Math.log10(Math.max(raw, 1e-12))));
@@ -107,6 +114,7 @@ export default function SparklineInteractive({
           ))
     : [];
 
+  // ---- styles/helpers
   const textColor = "rgba(255,255,255,0.7)";
   const gridColor = "rgba(255,255,255,0.08)";
   const CORNER_GAP = 34;
@@ -136,12 +144,15 @@ export default function SparklineInteractive({
           </linearGradient>
         </defs>
 
+        {/* baseline */}
         <line x1={plotX0} y1={plotY0} x2={plotX1} y2={plotY0} stroke={gridColor} strokeWidth="1" />
 
+        {/* grid */}
         {showGrid && yTickVals.map((v, i) => (
           <line key={`gy-${i}`} x1={plotX0} x2={plotX1} y1={sy(v)} y2={sy(v)} stroke={gridColor} />
         ))}
 
+        {/* axes & ticks */}
         {showAxes && (
           <>
             <line x1={plotX0} y1={plotY0} x2={plotX0} y2={plotY1} stroke={gridColor} />
@@ -193,12 +204,14 @@ export default function SparklineInteractive({
           </>
         )}
 
+        {/* series */}
         <path d={path} fill="none" stroke="#34d399" strokeWidth="3" strokeLinejoin="round" strokeLinecap="round" />
         <path
           d={`${path} L ${sx(series[series.length - 1].x)},${plotY0} L ${sx(series[0].x)},${plotY0} Z`}
           fill="url(#equityFill)"
         />
 
+        {/* hover marker */}
         {hi !== null && (
           <>
             <line
@@ -213,6 +226,7 @@ export default function SparklineInteractive({
           </>
         )}
 
+        {/* hover capture */}
         <rect
           x={plotX0}
           y={plotY1}
@@ -229,6 +243,7 @@ export default function SparklineInteractive({
         />
       </svg>
 
+      {/* tooltip */}
       {showTooltip && hi !== null && (
         <div
           className="pointer-events-none absolute rounded-md border border-white/10 bg-black/70 px-2 py-1 text-xs text-zinc-100"

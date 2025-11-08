@@ -12,10 +12,14 @@ export const authOptions: NextAuthOptions = {
   providers: [
     Credentials({
       name: "Credentials",
-      credentials: { email: {}, password: {} },
+      credentials: {
+        email: { label: "Email", type: "text" },
+        password: { label: "Password", type: "password" },
+      },
       async authorize(credentials) {
         const email = credentials?.email?.toString().toLowerCase();
         const password = credentials?.password?.toString() ?? "";
+
         if (!email || !password) return null;
 
         const user = await prisma.user.findUnique({ where: { email } });
@@ -24,18 +28,27 @@ export const authOptions: NextAuthOptions = {
         const ok = await bcrypt.compare(password, user.password);
         if (!ok) return null;
 
-        return { id: user.id, email: user.email, name: user.name ?? null };
+        // Return a minimal NextAuth user object (id is important)
+        return {
+          id: user.id,
+          email: user.email ?? undefined,
+          name: user.name ?? undefined,
+        };
       },
     }),
   ],
   pages: { signIn: "/auth/login" },
   callbacks: {
+    // Attach userId to the JWT
     async jwt({ token, user }) {
-      if (user) token.userId = (user as any).id;
+      if (user?.id) token.userId = user.id;
       return token;
     },
+    // Expose userId on the session (typed via next-auth.d.ts)
     async session({ session, token }) {
-      if (session.user) (session.user as any).id = token.userId as string;
+      if (session.user && token.userId) {
+        session.user.id = token.userId;
+      }
       return session;
     },
   },
@@ -49,9 +62,9 @@ export async function auth() {
 /** Convenience: require a user ID or redirect to login */
 export async function authUserId(): Promise<string> {
   const session = await auth();
-  const id = (session?.user as any)?.id as string | undefined;
+  const id = session?.user?.id;
   if (!id) redirect("/auth/login");
-  return id!;
+  return id;
 }
 
 /** Default export so you can `import auth from "@/lib/auth"` */

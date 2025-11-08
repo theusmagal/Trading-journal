@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import type { ReactElement } from "react";
 import { fmtQty, pnlClass } from "@/lib/format";
 
 type Trade = {
@@ -10,7 +11,7 @@ type Trade = {
   qty: string;
   price: string;
   pnl: number;
-  time: string;
+  time: string; // ISO
 };
 
 type ColKey = "time" | "symbol" | "side" | "qty" | "price" | "pnl";
@@ -20,7 +21,7 @@ export default function TradesTable({
   timeZone,
 }: {
   rows: Trade[];
-  timeZone?: string; // ← new (optional)
+  timeZone?: string; // optional
 }) {
   const [sortBy, setSortBy] = useState<ColKey>("time");
   const [asc, setAsc] = useState(false);
@@ -46,7 +47,7 @@ export default function TradesTable({
       }),
     [tz]
   );
-  const fmtDateTime = (iso: string) => dtFmt.format(new Date(iso));
+  const fmtDateTime = (iso: string): string => dtFmt.format(new Date(iso));
 
   const sorted = useMemo(() => {
     const s = [...rows].sort((a, b) => {
@@ -219,7 +220,7 @@ function header(
   sortBy: ColKey,
   asc: boolean,
   on: (k: ColKey) => void
-) {
+): ReactElement {
   const active = key === sortBy;
   return (
     <th className="py-2 pr-3 cursor-pointer select-none" onClick={() => on(key)}>
@@ -229,15 +230,27 @@ function header(
   );
 }
 
-function keyVal(t: any, k: ColKey) {
-  if (k === "time") return +new Date(t.time);
-  if (k === "qty") return +t.qty;
-  if (k === "price") return +t.price;
-  if (k === "pnl") return +t.pnl;
-  return (t[k] ?? "").toString();
+// Typed extractor: returns a sortable primitive for each column
+function keyVal(t: Trade, k: ColKey): number | string {
+  switch (k) {
+    case "time":
+      return +new Date(t.time); // numeric timestamp
+    case "qty":
+      return Number(t.qty);
+    case "price":
+      return Number(t.price);
+    case "pnl":
+      return t.pnl;
+    case "symbol":
+      return t.symbol;
+    case "side":
+      return t.side;
+    default:
+      return "";
+  }
 }
 
-function pageButtons(current: number, total: number) {
+function pageButtons(current: number, total: number): number[] {
   const span = 7;
   const half = Math.floor(span / 2);
   let start = Math.max(1, current - half);

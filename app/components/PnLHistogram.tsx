@@ -1,9 +1,18 @@
 "use client";
-import React, { type ReactElement, useState } from "react";
+import React, { useState } from "react";
 import { GREEN, RED } from "@/lib/colors";
 
 type RangeKey = "7d" | "30d" | "ytd" | "all";
 type Trade = { pnl: number; time: string };
+
+type Props = {
+  trades: Trade[];
+  range: RangeKey;
+  className?: string;
+  height?: number;
+  width?: number;
+  timeZone?: string;
+};
 
 export default function PnLHistogram({
   trades,
@@ -11,19 +20,14 @@ export default function PnLHistogram({
   className = "",
   height = 480,
   width = 1100,
-  timeZone, // <-- NEW
-}: {
-  trades: Trade[];
-  range: RangeKey;
-  className?: string;
-  height?: number;
-  width?: number;
-  timeZone?: string; // <-- NEW
-}) {
-  if (!trades?.length) return null;
+  timeZone,
+}: Props) {
+  // ✅ Hooks must come before any conditional return
+  const [hi, setHi] = useState<number | null>(null);
+  const hasTrades = trades && trades.length > 0;
+  if (!hasTrades) return null;
 
   const rotateX = range === "30d";
-  const minLabelGap = 70;
   const isMonthly = range === "ytd" || range === "all";
 
   const W = width, H = height, P = 12;
@@ -33,7 +37,7 @@ export default function PnLHistogram({
   const y0 = H - P - AY, y1 = P + 10;
   const plotW = x1 - x0, plotH = y0 - y1;
 
-  // ----- helpers (use passed timeZone when formatting) -----
+  // ----- helpers (use passed timeZone when formatting)
   const tz = timeZone || "UTC";
   const utc = (y: number, m: number, d = 1) => new Date(Date.UTC(y, m, d));
   const addDays = (d: Date, n: number) =>
@@ -46,8 +50,8 @@ export default function PnLHistogram({
     const s = n < 0 ? "-" : "";
     const a = Math.abs(n);
     if (a >= 1_000_000_000) return `${s}$${Math.round(a / 1_000_000_000)}B`;
-    if (a >= 1_000_000)     return `${s}$${Math.round(a / 1_000_000)}M`;
-    if (a >= 1_000)         return `${s}$${Math.round(a / 1_000)}K`;
+    if (a >= 1_000_000) return `${s}$${Math.round(a / 1_000_000)}M`;
+    if (a >= 1_000) return `${s}$${Math.round(a / 1_000)}K`;
     return `${s}$${Math.round(a)}`;
   };
   const niceStep = (range: number, approx: number) => {
@@ -61,6 +65,7 @@ export default function PnLHistogram({
   const now = new Date();
   const T = trades.map((t) => ({ ...t, d: new Date(t.time) }));
 
+  // ---- aggregate by days or months
   let labels: string[] = [];
   let sums: number[] = [];
 
@@ -94,6 +99,7 @@ export default function PnLHistogram({
     );
   }
 
+  // ---- compute Y scaling
   let minY = Math.min(0, ...sums);
   let maxY = Math.max(0, ...sums);
   const absMax = Math.max(Math.abs(minY), Math.abs(maxY));
@@ -120,8 +126,6 @@ export default function PnLHistogram({
   const textColor = "rgba(255,255,255,0.75)";
   const tipBg = "rgba(0,0,0,0.75)";
 
-  const [hi, setHi] = useState<number | null>(null);
-
   return (
     <div className={`glass p-4 ${className}`}>
       <div className="mb-2 text-sm text-zinc-400">P&amp;L</div>
@@ -142,11 +146,12 @@ export default function PnLHistogram({
           </g>
         ))}
 
+        {/* X-axis labels */}
         {(() => {
           const n = labels.length;
-          const baseStep = isMonthly ? 1 : (n <= 12 ? 1 : Math.ceil(n / 8));
+          const baseStep = isMonthly ? 1 : n <= 12 ? 1 : Math.ceil(n / 8);
           let lastX = -Infinity;
-          const els: ReactElement[] = [];
+          const els: React.ReactElement[] = [];
           for (let i = 0; i < n; i++) {
             if (i % baseStep !== 0 && i !== n - 1) continue;
             const x = sx(i);
@@ -169,6 +174,7 @@ export default function PnLHistogram({
           return els;
         })()}
 
+        {/* Bars */}
         {sums.map((v, i) => {
           const cx = sx(i);
           const isPos = v >= 0;
@@ -192,6 +198,7 @@ export default function PnLHistogram({
           );
         })}
 
+        {/* Tooltip */}
         {hi !== null && (() => {
           const v = sums[hi];
           const cx = sx(hi);

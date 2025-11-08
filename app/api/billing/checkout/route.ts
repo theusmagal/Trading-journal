@@ -1,5 +1,6 @@
 // app/api/billing/checkout/route.ts
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { stripe } from "@/lib/stripe";
@@ -7,13 +8,17 @@ import { stripe } from "@/lib/stripe";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
+const Body = z.object({
+  plan: z.enum(["monthly", "annual"]).default("monthly"),
+});
+
 function priceIdFor(plan: "monthly" | "annual") {
   return plan === "annual"
     ? process.env.STRIPE_PRICE_ID_ANNUAL!
     : process.env.STRIPE_PRICE_ID_MONTHLY!;
 }
 
-export async function POST(req: Request) {
+export async function POST(req: NextRequest) {
   const session = await auth();
   if (!session?.user?.id || !session?.user?.email) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -22,15 +27,21 @@ export async function POST(req: Request) {
   const userId = session.user.id;
   const email = session.user.email;
 
-  let body: any;
+  // Parse and validate body (no `any`)
+  let json: unknown;
   try {
-    body = await req.json();
+    json = await req.json();
   } catch {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
-
-  const plan: "monthly" | "annual" =
-    body?.plan === "annual" ? "annual" : "monthly";
+  const parsed = Body.safeParse(json);
+  if (!parsed.success) {
+    return NextResponse.json(
+      { error: "Invalid body", details: parsed.error.flatten() },
+      { status: 400 }
+    );
+  }
+  const { plan } = parsed.data;
 
   // Ensure single Customer; keep metadata.userId set
   const dbUser = await prisma.user.findUnique({
@@ -52,10 +63,10 @@ export async function POST(req: Request) {
     });
   } else {
     try {
-      await stripe.customers.update(stripeCustomerId, {
-        metadata: { userId },
-      });
-    } catch {}
+      await stripe.customers.update(stripeCustomerId, { metadata: { userId } });
+    } catch {
+      // ignore if customer not found or metadata set fails; webhook will still have client_reference_id
+    }
   }
 
   const appUrl = process.env.APP_URL ?? "http://localhost:3000";
@@ -64,7 +75,6 @@ export async function POST(req: Request) {
     mode: "subscription",
     customer: stripeCustomerId,
     client_reference_id: userId, // webhook fallback
-    payment_method_types: ["card"],
     line_items: [{ price: priceIdFor(plan), quantity: 1 }],
     subscription_data: {
       trial_period_days: 14,
