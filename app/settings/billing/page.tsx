@@ -1,26 +1,31 @@
-// app/settings/billing/page.tsx
 import { prisma } from "@/lib/prisma";
-import { authUserId } from "@/lib/auth";
-import { createPortalSession } from "@/lib/stripe";
 import BillingPanel from "../BillingPanel";
+import { authUserId } from "@/lib/auth";
+
+type Plan = "PRO_MONTHLY" | "PRO_ANNUAL";
+
+export const runtime = "nodejs";
 
 export default async function BillingPage() {
   const userId = await authUserId();
 
   const user = await prisma.user.findUnique({
     where: { id: userId },
-    select: { plan: true, stripeCustomerId: true },
+    select: { plan: true, trialEndsAt: true },
   });
 
-  let portalUrl: string | null = null;
+  // strictly type: Plan | undefined
+  const plan = (user?.plan ?? undefined) as Plan | undefined;
+  const trialEndsAt = user?.trialEndsAt ? user.trialEndsAt.toISOString() : null;
 
-  if (user?.stripeCustomerId && process.env.APP_URL) {
-    const sess = await createPortalSession(
-      user.stripeCustomerId,
-      `${process.env.APP_URL}/settings/billing`
-    );
-    portalUrl = sess.url ?? null;
-  }
+  // No billing portal model yet -> show nothing / disabled button
+  const portalUrl = null;
 
-  return <BillingPanel plan={user?.plan ?? "free"} portalUrl={portalUrl ?? undefined} />;
+  return (
+    <BillingPanel
+      plan={plan}
+      portalUrl={portalUrl}
+      trialEndsAt={trialEndsAt}
+    />
+  );
 }
