@@ -7,11 +7,6 @@ function isActiveStatus(s?: string | null): boolean {
   return s === "active" || s === "trialing";
 }
 
-/**
- * Ensures the current user is a paid or trialing member.
- * Redirects to /auth/login if not authenticated,
- * or /settings/billing if subscription/trial is inactive.
- */
 export async function requireMember(): Promise<{ userId: string }> {
   const session = await getServerSession(authOptions);
   const userId = session?.user?.id;
@@ -31,10 +26,10 @@ export async function requireMember(): Promise<{ userId: string }> {
   return { userId };
 }
 
-/** Membership plan types */
+/** membership plan types */
 export type Plan = "free" | "monthly" | "yearly";
 
-/** Membership object model */
+/** membership object model */
 export type Membership = {
   userId: string;
   plan: Plan;
@@ -42,7 +37,7 @@ export type Membership = {
   currentPeriodEnd?: Date | null;
 };
 
-/** Returns true if membership is currently valid */
+/** returns true if membership is currently valid */
 export function isActive(m: Membership): boolean {
   if (!m.active) return false;
   if (m.currentPeriodEnd && m.currentPeriodEnd < new Date()) return false;
