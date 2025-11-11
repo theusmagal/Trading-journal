@@ -1,4 +1,4 @@
-// app/api/billing/checkout/route.ts
+
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { authUserId } from "@/lib/auth";
@@ -76,9 +76,10 @@ export async function POST(req: Request) {
     } else {
       try {
         await stripe.customers.update(customerId, { metadata: { userId } });
-      } catch {
-      }
+      } catch { /* ignore */ }
     }
+
+    const appUrl = baseUrl();
 
     const session = await stripe.checkout.sessions.create({
       mode: "subscription",
@@ -92,8 +93,9 @@ export async function POST(req: Request) {
         metadata: { userId },
       },
       metadata: { userId, plan },
-      success_url: `${baseUrl()}/auth/post-checkout?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${baseUrl()}/pricing?canceled=1`,
+      
+      success_url: `${appUrl}/dashboard?welcome=1`,
+      cancel_url: `${appUrl}/pricing?canceled=1`,
     });
 
     return NextResponse.json({ url: session.url });
