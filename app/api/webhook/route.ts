@@ -1,4 +1,4 @@
-// app/api/webhook/route.ts
+
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { stripe } from "@/lib/stripe";
@@ -6,10 +6,12 @@ import { stripe } from "@/lib/stripe";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-/** Minimal shapes we actually use (avoid importing Stripe types on edge) */
+/** Minimal shapes used here */
 type CheckoutSessionLike = {
+  id?: string;
   customer?: string | null;
   subscription?: string | null;
+  metadata?: Record<string, unknown> | null;
 };
 
 type SubscriptionLike = {
@@ -19,27 +21,35 @@ type SubscriptionLike = {
   metadata?: Record<string, unknown> | null;
   current_period_end?: number | null;
   trial_end?: number | null;
+  items?: { data?: Array<{ price?: { id?: string | null } | null }> } | null;
 };
 
 function isCheckoutSession(x: unknown): x is CheckoutSessionLike {
   return !!x && typeof x === "object";
 }
-
 function isSubscription(x: unknown): x is SubscriptionLike {
   return !!x && typeof x === "object" && "id" in x && "status" in x;
 }
 
-function subTimes(s: SubscriptionLike | null | undefined) {
-  const currentPeriodEnd =
-    s?.current_period_end != null ? new Date(s.current_period_end * 1000) : null;
-  const trialEnd = s?.trial_end != null ? new Date(s.trial_end * 1000) : null;
-  return { currentPeriodEnd, trialEnd };
+function toDateOrNull(sec?: number | null) {
+  return sec != null ? new Date(sec * 1000) : null;
 }
 
-function mapPlan(meta: unknown): "PRO_MONTHLY" | "PRO_ANNUAL" | null {
-  const m = typeof meta === "string" ? meta : undefined;
-  if (m === "monthly") return "PRO_MONTHLY";
-  if (m === "annual") return "PRO_ANNUAL";
+type PlanEnum = "PRO_MONTHLY" | "PRO_ANNUAL";
+
+function mapPlan(meta: unknown): PlanEnum | null {
+  const s = typeof meta === "string" ? meta : undefined;
+  if (s === "monthly") return "PRO_MONTHLY";
+  if (s === "annual")  return "PRO_ANNUAL";
+  return null;
+}
+
+function mapPlanFromPriceId(priceId?: string | null): PlanEnum | null {
+  const m = process.env.STRIPE_PRICE_ID_MONTHLY ?? process.env.STRIPE_PRICE_MONTHLY;
+  const a = process.env.STRIPE_PRICE_ID_ANNUAL  ?? process.env.STRIPE_PRICE_ANNUAL;
+  if (!priceId) return null;
+  if (m && priceId === m) return "PRO_MONTHLY";
+  if (a && priceId === a) return "PRO_ANNUAL";
   return null;
 }
 
@@ -49,7 +59,7 @@ export async function POST(req: Request) {
 
   const rawBody = await req.text();
 
-  let event: unknown;
+  let event: any;
   try {
     event = stripe.webhooks.constructEvent(
       rawBody,
@@ -57,12 +67,10 @@ export async function POST(req: Request) {
       process.env.STRIPE_WEBHOOK_SECRET as string
     );
   } catch (err: unknown) {
-    const msg = err instanceof Error ? err.message : String(err);
-    console.error("[webhook] signature verify failed:", msg);
+    console.error("[webhook] signature verify failed:", err);
     return NextResponse.json({ error: "Invalid signature" }, { status: 400 });
   }
 
-  // At runtime this is a Stripe.Event; we only use the parts we need
   const ev = event as { type: string; data: { object: unknown } };
 
   try {
@@ -71,57 +79,71 @@ export async function POST(req: Request) {
         const session = ev.data.object;
         if (!isCheckoutSession(session)) break;
 
-        const customerId = session.customer ?? "";
-        const subscriptionId = session.subscription ?? "";
-        if (!subscriptionId) {
-          console.warn("[webhook] checkout.session.completed: missing subscriptionId");
-          break;
+        const sessionId = session.id;
+        const customerId = session.customer ?? undefined;
+        const subscriptionId = session.subscription ?? undefined;
+        if (!subscriptionId) break;
+
+        
+        const subFetched = (await stripe.subscriptions.retrieve(subscriptionId)) as any as SubscriptionLike;
+
+        
+        let plan =
+          mapPlan(subFetched?.metadata?.plan) ??
+          mapPlan(session?.metadata?.plan);
+
+        if (!plan && sessionId) {
+          const items = await stripe.checkout.sessions.listLineItems(sessionId, { expand: ["data.price"] });
+          const priceId = (items.data?.[0]?.price as any)?.id as string | undefined;
+          plan = mapPlanFromPriceId(priceId) ?? plan;
         }
 
-        const subFetched = await stripe.subscriptions.retrieve(subscriptionId);
-        const sub = subFetched as unknown as SubscriptionLike;
+        
+        const byCustomer = customerId
+          ? await prisma.user.findFirst({
+              where: { stripeCustomerId: customerId },
+              select: { id: true },
+            })
+          : null;
 
-        const byCustomer = await prisma.user.findFirst({
-          where: { stripeCustomerId: customerId },
-          select: { id: true },
-        });
         const userId =
           byCustomer?.id ??
-          (typeof sub.metadata?.userId === "string" ? sub.metadata.userId : undefined);
+          (typeof subFetched?.metadata?.userId === "string" ? subFetched.metadata.userId : undefined) ??
+          (typeof (session as any)?.metadata?.userId === "string" ? (session as any).metadata.userId : undefined);
 
-        if (!userId) {
-          console.warn("[webhook] checkout.session.completed: no userId");
-          break;
-        }
+        if (!userId) break;
 
-        const plan = mapPlan(sub.metadata?.plan);
-        const { currentPeriodEnd, trialEnd } = subTimes(sub);
+        const trialEndsAt = toDateOrNull(subFetched?.trial_end);
+        const currentPeriodEnd = toDateOrNull(subFetched?.current_period_end);
+        const status = subFetched?.status;
 
+        
         await prisma.user.update({
           where: { id: userId },
           data: {
             plan: plan ?? undefined,
-            trialEndsAt: trialEnd ?? undefined,
-            stripeCustomerId: customerId,
-            stripeSubId: sub.id,
-            subscriptionStatus: sub.status,
+            trialEndsAt: trialEndsAt ?? undefined,
+            stripeCustomerId: customerId ?? undefined,
+            stripeSubId: subFetched.id,
+            subscriptionStatus: status,
           },
         });
 
+        
         await prisma.billingSubscription.upsert({
           where: { stripeSubscriptionId: subscriptionId },
           create: {
             userId,
-            stripeCustomerId: customerId,
+            stripeCustomerId: customerId ?? "",
             stripeSubscriptionId: subscriptionId,
-            status: sub.status,
+            status: status ?? "active",
             currentPeriodEnd,
-            trialEnd,
+            trialEnd: trialEndsAt,
           },
           update: {
-            status: sub.status,
+            status: status ?? "active",
             currentPeriodEnd,
-            trialEnd,
+            trialEnd: trialEndsAt,
           },
         });
 
@@ -135,50 +157,59 @@ export async function POST(req: Request) {
         if (!isSubscription(subObj)) break;
 
         const subscriptionId = subObj.id;
-        const customerId = subObj.customer ?? "";
+        const customerId = subObj.customer ?? undefined;
 
-        const byCustomer = await prisma.user.findFirst({
-          where: { stripeCustomerId: customerId },
-          select: { id: true },
-        });
-        const userId =
-          byCustomer?.id ??
-          (typeof subObj.metadata?.userId === "string" ? subObj.metadata.userId : undefined);
-
-        if (!userId) {
-          console.warn(`[webhook] ${ev.type}: no userId`);
-          break;
+        
+        let plan = mapPlan(subObj?.metadata?.plan);
+        if (!plan) {
+          const priceId = (subObj?.items?.data?.[0]?.price as any)?.id as string | undefined;
+          plan = mapPlanFromPriceId(priceId) ?? plan;
         }
 
-        const { currentPeriodEnd, trialEnd } = subTimes(subObj);
+        const byCustomer = customerId
+          ? await prisma.user.findFirst({
+              where: { stripeCustomerId: customerId },
+              select: { id: true },
+            })
+          : null;
 
+        const userId =
+          byCustomer?.id ??
+          (typeof subObj?.metadata?.userId === "string" ? subObj.metadata.userId : undefined);
+
+        if (!userId) break;
+
+        const trialEndsAt = toDateOrNull(subObj?.trial_end);
+        const currentPeriodEnd = toDateOrNull(subObj?.current_period_end);
+        const status = subObj?.status;
+
+        
         await prisma.billingSubscription.upsert({
           where: { stripeSubscriptionId: subscriptionId },
           create: {
             userId,
-            stripeCustomerId: customerId,
+            stripeCustomerId: customerId ?? "",
             stripeSubscriptionId: subscriptionId,
-            status: subObj.status,
+            status: status ?? "active",
             currentPeriodEnd,
-            trialEnd,
+            trialEnd: trialEndsAt,
           },
           update: {
-            status: subObj.status,
+            status: status ?? "active",
             currentPeriodEnd,
-            trialEnd,
+            trialEnd: trialEndsAt,
           },
         });
 
-        const isInactive = ["canceled", "unpaid", "incomplete_expired"].includes(
-          subObj.status
-        );
-
+        
+        const isInactive = ["canceled", "unpaid", "incomplete_expired"].includes(status || "");
         await prisma.user.update({
           where: { id: userId },
           data: {
-            stripeSubId: subObj.id,
-            subscriptionStatus: subObj.status,
-            ...(isInactive ? { plan: null } : {}),
+            stripeSubId: subscriptionId,
+            subscriptionStatus: status,
+            ...(isInactive ? { plan: null } : plan ? { plan } : {}),
+            ...(trialEndsAt ? { trialEndsAt } : {}),
           },
         });
 
@@ -188,9 +219,8 @@ export async function POST(req: Request) {
       default:
         console.log("[webhook] Unhandled event:", ev.type);
     }
-  } catch (err: unknown) {
-    const msg = err instanceof Error ? err.message : String(err);
-    console.error("[webhook] handler error:", msg);
+  } catch (err) {
+    console.error("[webhook] handler error:", err);
   }
 
   return NextResponse.json({ ok: true });

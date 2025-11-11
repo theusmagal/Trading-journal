@@ -1,4 +1,3 @@
-
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { authUserId } from "@/lib/auth";
@@ -76,7 +75,9 @@ export async function POST(req: Request) {
     } else {
       try {
         await stripe.customers.update(customerId, { metadata: { userId } });
-      } catch { /* ignore */ }
+      } catch {
+        /* ignore */
+      }
     }
 
     const appUrl = baseUrl();
@@ -86,14 +87,13 @@ export async function POST(req: Request) {
       customer: customerId,
       billing_address_collection: "auto",
       allow_promotion_codes: true,
-      client_reference_id: userId, 
+      client_reference_id: userId,
       line_items: [{ price: priceIdFor(plan), quantity: 1 }],
       subscription_data: {
         trial_period_days: 14,
-        metadata: { userId },
+        metadata: { userId, plan }, // <-- plan now included on the subscription
       },
-      metadata: { userId, plan },
-      
+      metadata: { userId, plan },    // keep plan on the session too
       success_url: `${appUrl}/dashboard?welcome=1`,
       cancel_url: `${appUrl}/pricing?canceled=1`,
     });
